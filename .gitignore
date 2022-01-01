@@ -1,0 +1,4 @@
+media/
+*.log
+*.dvi
+__pycache__/
