@@ -145,8 +145,142 @@ def _make_even_cycle_graph():
     graph.add_edge("E", "F")
     graph.add_edge("F", "C")
     return graph
+
+
+class StableMatching(Scene):
+    def construct(self):
+        text = [
+            [
+                MathTex("A", font_size=64),
+                MathTex("B", font_size=64),
+                MathTex("C", font_size=64),
+            ],
+            [
+                MathTex(r"\alpha", font_size=64),
+                MathTex(r"\beta", font_size=64),
+                MathTex(r"\gamma", font_size=64),
+            ]
+        ]
+
+        grid = VGroup(
+            *text[0],
+            *text[1]
+        ).arrange_in_grid(cols=2, flow_order="dr", col_widths=[3]*2, row_heights=[2]*3)
     
-        
+        self.play(FadeIn(grid))
+        self.wait(.25)
+        self.play(Circumscribe(VGroup(*text[0]), time_width=0.5, buff=0.2))
+        self.wait(.25)
+        self.play(Circumscribe(VGroup(*text[1]), time_width=0.5, buff=0.2))
+        self.wait(.25)
+
+        def edge(a, b):
+            return Arrow(text[a[0]][a[1]].get_center(), text[b[0]][b[1]].get_center(), buff=0.5)
+
+        matching1 = [
+            edge((0,0), (1,1)),
+            edge((0,1), (1,2)),
+            edge((0,2), (1,0)),
+        ]
+
+        self.play(LaggedStart(
+            *[GrowArrow(a) for a in matching1],
+            lag_ratio=0.25
+        ))
+        self.wait(.25)
+        self.play(LaggedStart(
+            *[FadeOut(a) for a in matching1],
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+
+        matching2 = [
+            edge((0,0), (1,0)),
+            edge((0,1), (1,1)),
+            edge((0,2), (1,2)),
+        ]
+
+        self.play(LaggedStart(
+            *[GrowArrow(a) for a in matching2],
+            lag_ratio=0.25
+        ))
+        self.wait(.25)
+        self.play(LaggedStart(
+            *[FadeOut(a) for a in matching2],
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+
+        pref_squares = [
+            VGroup(*[Square(.26) for _ in range(3)])
+                .set_stroke(width=2)
+                .arrange(DOWN, buff=0)
+                .next_to(letter, direction=LEFT if i == 0 else RIGHT)
+                .set_z_index(-1)
+            for i, column in enumerate(text) for letter in column 
+        ]
+
+        prefs = [
+            [r"\alpha", r"\beta", r"\gamma"],
+            [r"\beta", r"\alpha", r"\gamma"],
+            [r"\alpha", r"\gamma", r"\beta"],
+            ["B", "A", "C"],
+            ["A", "B", "C"],
+            ["C", "A", "B"],
+        ]
+
+        prefs_mtext = [
+            [MathTex(s, font_size=24).move_to(pref_squares[i][j]) for j, s in enumerate(pref)] for i, pref in enumerate(prefs)
+        ]
+
+
+        self.play(LaggedStart(
+            *[Create(prefs) for prefs in pref_squares],
+            *[Write(x) for pref_group in prefs_mtext for x in pref_group]
+        ))
+        self.wait(.25)
+
+        self.play(LaggedStart(
+            *[GrowArrow(a) for a in matching1],
+            lag_ratio=0.25
+        ))
+        self.wait(.25)
+
+        self.play(LaggedStart(
+            Indicate(text[0][0]),
+            Indicate(text[1][0])
+        ))
+        self.wait(.25)
+        self.play(AnimationGroup(
+            Indicate(prefs_mtext[0][1]),
+            Indicate(prefs_mtext[3][2]),
+            Indicate(matching1[0]),
+            Indicate(matching1[2]),
+        ))
+        self.wait(.25)
+        self.play(AnimationGroup(
+            Indicate(prefs_mtext[0][0]),
+            Indicate(prefs_mtext[3][1]),
+        ))
+        self.wait(.25)
+
+        matching1[0].set_z_index(-1)
+        matching1[2].set_z_index(-1)
+        self.play(AnimationGroup(
+            matching1[0].animate.set_stroke(color=GRAY_E).set_fill(color=GRAY_E),
+            matching1[2].animate.set_stroke(color=GRAY_E).set_fill(color=GRAY_E),
+        ))
+        self.wait(.25)
+
+        self.play(Circumscribe(
+            VGroup(text[0][0], text[1][0], *prefs_mtext[0], *prefs_mtext[3])
+        ))
+        self.wait(.25)
+
+        extra_edge = edge((0,0), (1,0))
+        self.play(GrowArrow(extra_edge))
+        self.wait(.25)
+
 class AugmentingPath(Scene):
     def construct(self):
         graph = _make_even_cycle_graph()
