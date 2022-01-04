@@ -1,7 +1,28 @@
 from manim import *
 from manim.mobject.opengl_compatibility import ConvertToOpenGL
-from typing import Iterable, Optional, Sequence
+from typing import Callable, Iterable, Optional, Sequence
 from math import sin, cos, pi, sqrt
+
+
+class IndicateEdges(Transform):
+    def __init__(
+        self,
+        mobject: "Mobject",
+        scale_factor: float = 1.2,
+        color: str = YELLOW,
+        rate_func: Callable[[float, Optional[float]], np.ndarray] = there_and_back,
+        **kwargs
+    ) -> None:
+        self.color = color
+        self.scale_factor = scale_factor
+        super().__init__(mobject, rate_func=rate_func, **kwargs)
+
+    def create_target(self) -> "Mobject":
+        target = self.mobject.copy()
+        target.scale(self.scale_factor)
+        target.set_stroke(self.color)
+        return target
+
 
 class Path(VMobject, metaclass=ConvertToOpenGL):
     def __init__(self, *points: Sequence[float], color=BLUE, **kwargs):
@@ -13,6 +34,7 @@ class Path(VMobject, metaclass=ConvertToOpenGL):
         self.add_points_as_corners(
             [np.array(vertex) for vertex in vertices],
         )
+
 
 class Graph:
     def __init__(self, points, scale=1, solid_color=WHITE, dashed_color=WHITE):
@@ -147,6 +169,24 @@ def _make_even_cycle_graph():
     return graph
 
 
+def make_matte(w, h):
+    bg = Rectangle(width=10,  height=10).set_fill(color=BLACK, opacity=0.5).set_stroke(width=0)
+    bg2 = Rectangle(width=w, height=h).set_fill(color=BLACK, opacity=1).set_stroke(width=0)
+    outline = Rectangle(width=w, height=h).set_stroke(color=WHITE)
+    return (
+        AnimationGroup(
+            FadeIn(bg),
+            FadeIn(bg2),
+            Create(outline)
+        ),
+        AnimationGroup(
+            FadeOut(bg),
+            FadeOut(bg2),
+            FadeOut(outline)
+        )
+    )
+
+
 class StableMatching(Scene):
     def construct(self):
         text = [
@@ -211,9 +251,56 @@ class StableMatching(Scene):
         ))
         self.wait(.25)
 
+        show, hide = make_matte(8, 2)
+        popup_text = Group(
+            Text("1. Evaluate potential pairings", font_size=32),
+            Text("2. Find optimal matching", font_size=32)
+        ).arrange(DOWN, aligned_edge=LEFT)
+
+        self.play(LaggedStart(
+            show,
+            Write(popup_text[0]),
+            lag_ratio=0.2
+            ))
+        self.wait(.25)
+        self.play(Write(popup_text[1]))
+        self.wait(.25)
+
+        self.play(LaggedStart(
+            FadeOut(popup_text[0]),
+            popup_text[1].animate.move_to([
+                popup_text[1].get_center()[0],
+                popup_text[0].get_center()[1],
+                0
+            ])
+        ))
+        self.wait(.25)
+
+        popup_text_2 = Group(
+            Text("Stable\nmatching", should_center=True, font_size=36, line_spacing=.5),
+            Line([0, -.5, 0], [0, .5, 0]),
+            Text("Maximum\nmatching", should_center=True, font_size=36, line_spacing=.5),
+        ).arrange(RIGHT, buff=.8)
+        
+        self.play(LaggedStart(
+            FadeOut(popup_text[1]),
+            FadeIn(popup_text_2),
+            lag_ratio=0.4
+        ))
+        self.wait(.25)
+        self.play(Indicate(popup_text_2[0]))
+        self.wait(.25)
+
+        self.play(AnimationGroup(
+            hide,
+            FadeOut(popup_text_2)
+            ))
+        self.wait(.25)
+
         pref_squares = [
             VGroup(*[Square(.26) for _ in range(3)])
                 .set_stroke(width=2)
+                .set_fill(color=BLACK, opacity=1)
                 .arrange(DOWN, buff=0)
                 .next_to(letter, direction=LEFT if i == 0 else RIGHT)
                 .set_z_index(-1)
@@ -233,12 +320,57 @@ class StableMatching(Scene):
             [MathTex(s, font_size=24).move_to(pref_squares[i][j]) for j, s in enumerate(pref)] for i, pref in enumerate(prefs)
         ]
 
-
         self.play(LaggedStart(
-            *[Create(prefs) for prefs in pref_squares],
-            *[Write(x) for pref_group in prefs_mtext for x in pref_group]
+            *[Create(prefs) for prefs in pref_squares[0]],
+            lag_ratio=0.2
+        ))
+        self.play(LaggedStart(
+            *[Write(x) for x in prefs_mtext[0]],
+            lag_ratio=0.4
         ))
         self.wait(.25)
+
+        self.play(LaggedStart(
+            *[Create(prefs) for prefs in pref_squares[1:3]],
+            *[Write(x) for pref_group in prefs_mtext[1:3] for x in pref_group],
+            lag_ratio=0.3
+        ))
+        self.wait(.25)
+
+        self.play(LaggedStart(
+            *[Create(prefs) for prefs in pref_squares[3:]],
+            *[Write(x) for pref_group in prefs_mtext[3:] for x in pref_group],
+            lag_ratio=0.3
+        ))
+        self.wait(.25)
+
+        self.play(AnimationGroup(
+            Indicate(prefs_mtext[0][0]),
+            IndicateEdges(pref_squares[0][0], scale_factor=1.5),
+        ))
+        self.wait(.25)
+        self.play(AnimationGroup(
+            Indicate(prefs_mtext[3][1]),
+            IndicateEdges(pref_squares[3][1], scale_factor=1.5),
+        ))
+        self.wait(.25)
+
+        # matte_stack = [
+        #     Rectangle(width=10,  height=10).set_fill(color=BLACK, opacity=0.5).set_stroke(width=0),
+        #     Rectangle(width=6, height=2).set_fill(color=BLACK, opacity=1).set_stroke(color=WHITE)
+        # ]
+        # stable_matching_text = Text("Stable Matching", slant=ITALIC).move_to([0,0,0])
+        # self.play(LaggedStart(
+        #     FadeIn(VGroup(*matte_stack)),
+        #     Write(stable_matching_text)
+        # ))
+        # self.wait(.25)
+
+        # self.play(AnimationGroup(
+        #     FadeOut(VGroup(*matte_stack)),
+        #     FadeOut(stable_matching_text),
+        # ))
+        # self.wait(.25)
 
         self.play(LaggedStart(
             *[GrowArrow(a) for a in matching1],
@@ -248,12 +380,15 @@ class StableMatching(Scene):
 
         self.play(LaggedStart(
             Indicate(text[0][0]),
-            Indicate(text[1][0])
+            Indicate(text[1][0]),
+            lag_ratio=0.8
         ))
         self.wait(.25)
         self.play(AnimationGroup(
             Indicate(prefs_mtext[0][1]),
             Indicate(prefs_mtext[3][2]),
+            IndicateEdges(pref_squares[0][1], scale_factor=1.5),
+            IndicateEdges(pref_squares[3][2], scale_factor=1.5),
             Indicate(matching1[0]),
             Indicate(matching1[2]),
         ))
@@ -261,6 +396,8 @@ class StableMatching(Scene):
         self.play(AnimationGroup(
             Indicate(prefs_mtext[0][0]),
             Indicate(prefs_mtext[3][1]),
+            IndicateEdges(pref_squares[0][0], scale_factor=1.5),
+            IndicateEdges(pref_squares[3][1], scale_factor=1.5),
         ))
         self.wait(.25)
 
@@ -280,6 +417,150 @@ class StableMatching(Scene):
         extra_edge = edge((0,0), (1,0))
         self.play(GrowArrow(extra_edge))
         self.wait(.25)
+        
+        self.play(AnimationGroup(
+            Indicate(text[0][2]),
+            Indicate(text[1][1])
+        ))
+        self.wait(.25)
+
+        self.play(AnimationGroup(
+            *[FadeOut(a) for a in matching1],
+            FadeOut(extra_edge)
+        ))
+        self.wait(.25)
+
+        matching3 = [
+            edge((0,0), (1,1)),
+            edge((0,1), (1,0)),
+            edge((0,2), (1,2)),
+        ]
+        self.play(LaggedStart(
+            *[GrowArrow(a) for a in matching3],
+            lag_ratio=0.25
+        ))
+        self.wait(.25)
+        
+        self.play(AnimationGroup(
+            Indicate(prefs_mtext[0][1]),
+            IndicateEdges(pref_squares[0][1], scale_factor=1.5),
+            Indicate(matching3[0])
+        ))
+        self.wait(.25)
+        self.play(AnimationGroup(
+            Indicate(prefs_mtext[0][0]),
+            IndicateEdges(pref_squares[0][0], scale_factor=1.5),
+        ))
+        self.wait(.25)
+        self.play(AnimationGroup(
+            Indicate(prefs_mtext[3][0]),
+            IndicateEdges(pref_squares[3][0], scale_factor=1.5),
+            Indicate(matching3[1])
+        ))
+        self.wait(.25)
+        self.play(AnimationGroup(
+            *(FadeOut(x) for y in prefs_mtext for x in y),
+            *(FadeOut(x) for x in pref_squares),
+            *(FadeOut(x) for x in matching3)
+        ))
+        self.wait(.25)
+
+
+class MaximumMatchingIntro(Scene):
+    def construct(self):
+        text = [
+            [
+                MathTex("A", font_size=64),
+                MathTex("B", font_size=64),
+                MathTex("C", font_size=64),
+            ],
+            [
+                MathTex(r"\alpha", font_size=64),
+                MathTex(r"\beta", font_size=64),
+                MathTex(r"\gamma", font_size=64),
+            ]
+        ]
+
+        grid = VGroup(
+            *text[0],
+            *text[1]
+        ).arrange_in_grid(cols=2, flow_order="dr", col_widths=[3]*2, row_heights=[2]*3)
+        self.add(grid)
+        self.wait(.25)
+
+        def dashed_line(p1, p2):
+            return DashedLine(p1, p2, stroke_width=10, dash_length=0.1, dashed_ratio=0.4, buff=.5, stroke_color=GRAY_D)
+            
+        def solid_line(p1, p2):
+            return Line(p1, p2, stroke_width=10, buff=.5, z_index=10)
+
+        edges = [
+            dashed_line(text[0][0].get_center(), text[1][0].get_center()),
+            dashed_line(text[0][0].get_center(), text[1][1].get_center()),
+            dashed_line(text[0][1].get_center(), text[1][1].get_center()),
+            dashed_line(text[0][1].get_center(), text[1][2].get_center()),
+            dashed_line(text[0][2].get_center(), text[1][1].get_center()),
+        ]
+        self.play(AnimationGroup(
+            *(FadeIn(e) for e in edges)
+        ))
+        self.wait(.25)
+
+        l1 = solid_line(text[0][0].get_center(), text[1][0].get_center())
+        l2 = solid_line(text[0][1].get_center(), text[1][1].get_center())
+        self.play(AnimationGroup(
+            GrowFromCenter(l1),
+            FadeOut(edges[0]),
+        ))
+        self.wait(.25)
+
+        self.play(AnimationGroup(
+            GrowFromCenter(l2),
+            FadeOut(edges[2]),
+        ))
+        self.wait(.25)
+
+        self.play(Indicate(text[0][2]))
+        self.wait(.25)
+
+        self.play(AnimationGroup(
+            ShrinkToCenter(l1),
+            ShrinkToCenter(l2),
+            FadeIn(edges[0]),
+            FadeIn(edges[2]),
+        ))
+        self.wait(.25)
+        
+        l1 = solid_line(text[0][0].get_center(), text[1][0].get_center())
+        l3 = solid_line(text[0][1].get_center(), text[1][2].get_center())
+        l4 = solid_line(text[0][2].get_center(), text[1][1].get_center())
+        self.play(LaggedStart(
+            AnimationGroup(
+                GrowFromCenter(l1),
+                FadeOut(edges[0]),
+            ),
+            AnimationGroup(
+                GrowFromCenter(l3),
+                FadeOut(edges[3]),
+            ),
+            AnimationGroup(
+                GrowFromCenter(l4),
+                FadeOut(edges[4]),
+            ),
+            lag_ratio=0.25
+        ))
+        self.wait(.25)
+
+        self.play(AnimationGroup(
+            FadeOut(l1),
+            FadeOut(l3),
+            FadeOut(l4),
+            FadeIn(edges[0]),
+            FadeIn(edges[3]),
+            FadeIn(edges[4]),
+        ))
+        self.wait(.25)
+
 
 class AugmentingPath(Scene):
     def construct(self):
