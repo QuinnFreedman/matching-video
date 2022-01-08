@@ -1,7 +1,10 @@
 from manim import *
+from manim.animation.animation import DEFAULT_ANIMATION_RUN_TIME
 from manim.mobject.opengl_compatibility import ConvertToOpenGL
 from typing import Callable, Iterable, Optional, Sequence
 from math import sin, cos, pi, sqrt
+
+from numpy import left_shift
 
 
 class IndicateEdges(Transform):
@@ -466,6 +469,60 @@ class StableMatching(Scene):
         self.wait(.25)
 
 
+class StableVsMaximumTable(Scene):
+    def construct(self):
+        stable = Tex("Stable Matching", font_size=64).move_to([-3.5, 0, 0])
+        maximum = Tex("Maximum Matching", font_size=64).move_to([3.5, 0, 0])
+        vline = Line([0, .6, 0], [0, -5.5, 0])
+        titles = VGroup(stable, vline, maximum).to_edge(UP, buff=1)
+        hline = Line([-7.5, 0, 0], [7.5, 0, 0])
+        hline.align_to(maximum.get_critical_point(DOWN) + DOWN * .3, DOWN)
+
+        def bullet(str):
+            return Tex(
+            r"""
+            \begin{itemize}
+              \item """ + str + r"""
+            \end{itemize}
+            """
+            )
+
+        list_left = VGroup(
+              bullet(r"Anyone can be matched\\with anyone"),
+              bullet(r"Everyone will be matched"),
+              bullet(r"Preference ranking"),
+              bullet(r"Maximize stability"),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=.5).align_to([-6.7, 0, 0], LEFT).align_to(hline.get_center() + DOWN * .6, UP)
+
+        list_right = VGroup(
+            bullet(r"Not everyone can be\\matched"),
+            bullet(r"Maximize number of\\individuals matched"),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=.5).align_to([.5, 0, 0], LEFT).align_to(hline.get_center() + DOWN * .6, UP)
+
+        self.play(LaggedStart(
+            Create(hline),
+            Create(vline),
+            Write(stable),
+            lag_ratio=.2
+        ))
+
+        self.wait(.25)
+        for l in list_left:
+            self.play(Write(l))
+            self.wait(.25)
+        self.play(Write(maximum))
+        self.wait(.25)
+        for l in list_right:
+            self.play(Write(l))
+            self.wait(.25)
+
+        self.add(titles)
+        self.add(hline)
+        self.add(list_left)
+        self.add(list_right)
+
+
+
 class MaximumMatchingIntro(Scene):
     def construct(self):
         text = [
@@ -488,6 +545,13 @@ class MaximumMatchingIntro(Scene):
         self.add(grid)
         self.wait(.25)
 
+        p_a = text[0][0].get_center()
+        p_b = text[0][1].get_center()
+        p_c = text[0][2].get_center()
+        p_1 = text[1][0].get_center()
+        p_2 = text[1][1].get_center()
+        p_3 = text[1][2].get_center()
+
         def dashed_line(p1, p2):
             return DashedLine(p1, p2, stroke_width=10, dash_length=0.1, dashed_ratio=0.4, buff=.5, stroke_color=GRAY_D)
             
@@ -495,19 +559,19 @@ class MaximumMatchingIntro(Scene):
             return Line(p1, p2, stroke_width=10, buff=.5, z_index=10)
 
         edges = [
-            dashed_line(text[0][0].get_center(), text[1][0].get_center()),
-            dashed_line(text[0][0].get_center(), text[1][1].get_center()),
-            dashed_line(text[0][1].get_center(), text[1][1].get_center()),
-            dashed_line(text[0][1].get_center(), text[1][2].get_center()),
-            dashed_line(text[0][2].get_center(), text[1][1].get_center()),
+            dashed_line(p_a, p_1),
+            dashed_line(p_a, p_2),
+            dashed_line(p_b, p_2),
+            dashed_line(p_b, p_3),
+            dashed_line(p_c, p_2),
         ]
         self.play(AnimationGroup(
             *(FadeIn(e) for e in edges)
         ))
         self.wait(.25)
 
-        l1 = solid_line(text[0][0].get_center(), text[1][0].get_center())
-        l2 = solid_line(text[0][1].get_center(), text[1][1].get_center())
+        l1 = solid_line(p_a, p_1)
+        l2 = solid_line(p_b, p_2)
         self.play(AnimationGroup(
             GrowFromCenter(l1),
             FadeOut(edges[0]),
@@ -531,9 +595,9 @@ class MaximumMatchingIntro(Scene):
         ))
         self.wait(.25)
         
-        l1 = solid_line(text[0][0].get_center(), text[1][0].get_center())
-        l3 = solid_line(text[0][1].get_center(), text[1][2].get_center())
-        l4 = solid_line(text[0][2].get_center(), text[1][1].get_center())
+        l1 = solid_line(p_a, p_1)
+        l3 = solid_line(p_b, p_3)
+        l4 = solid_line(p_c, p_2)
         self.play(LaggedStart(
             AnimationGroup(
                 GrowFromCenter(l1),
@@ -552,12 +616,240 @@ class MaximumMatchingIntro(Scene):
         self.wait(.25)
 
         self.play(AnimationGroup(
-            FadeOut(l1),
-            FadeOut(l3),
-            FadeOut(l4),
+            ShrinkToCenter(l1),
+            ShrinkToCenter(l3),
+            ShrinkToCenter(l4),
             FadeIn(edges[0]),
             FadeIn(edges[3]),
             FadeIn(edges[4]),
+        ))
+        self.wait(.25)
+
+        p_a += LEFT
+        p_b += LEFT
+        p_c += LEFT
+        p_1 += RIGHT
+        p_2 += RIGHT
+        p_3 += RIGHT
+
+        self.play(AnimationGroup(
+            *[t.animate.shift(LEFT) for t in text[0]],
+            *[t.animate.shift(RIGHT) for t in text[1]],
+            # *[e.animate.put_start_and_end_on(e.get_start() + LEFT, e.get_end() + RIGHT) for e in edges]
+            # *[Transform(e, dashed_line(e.get_start() + LEFT, e.get_end() + RIGHT)) for e in edges]
+            Transform(edges[0], dashed_line(p_a, p_1)),
+            Transform(edges[1], dashed_line(p_a, p_2)),
+            Transform(edges[2], dashed_line(p_b, p_2)),
+            Transform(edges[3], dashed_line(p_b, p_3)),
+            Transform(edges[4], dashed_line(p_c, p_2)),
+        ))
+        self.wait(.25)
+
+        arrows = [Arrow(e.get_start(), e.get_end(), buff=0) for e in edges]
+        self.play(LaggedStart(
+            *[
+                AnimationGroup(
+                    FadeOut(edges[i]),
+                    GrowArrow(arrows[i]),
+                ) for i in range(len(edges))
+            ],
+            lag_ratio=0.2
+        ))
+
+        capacities = [
+            MathTex("0", "/", "1", font_size=36).next_to(edges[0].get_center(), direction=UP),
+            MathTex("0", "/", "1", font_size=36).next_to(edges[1].get_end() + .25*UP, direction=UP+LEFT, buff=.5),
+            MathTex("0", "/", "1", font_size=36).next_to(edges[2].get_center(), direction=UP),
+            MathTex("0", "/", "1", font_size=36).next_to(edges[4].get_end() + .25*DOWN, direction=DOWN+LEFT, buff=.5),
+            MathTex("0", "/", "1", font_size=36).next_to(edges[3].get_end(), direction=LEFT, buff=1),
+        ]
+
+        self.play(LaggedStart(
+            *[Write(x) for x in capacities],
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+
+        def set_fill(capacities, i, s):
+            return Transform(capacities[i][0], MathTex(s, font_size=36).move_to(capacities[i][0]))
+
+        self.play(set_fill(capacities, 0, "1"))
+        self.wait(.25)
+        self.play(set_fill(capacities, 0, "0"))
+        self.wait(.25)
+
+        source = MathTex("s", font_size=64).next_to(p_b, direction=LEFT, buff=3)
+        sink = MathTex("t", font_size=64).next_to(p_2, direction=RIGHT, buff=3)
+        p_s = source.get_center()
+        p_t = sink.get_center()
+
+        st_arrows = [
+            Arrow(p_s, p_a, buff=.5),
+            Arrow(p_s, p_b, buff=.5),
+            Arrow(p_s, p_c, buff=.5),
+            Arrow(p_1, p_t, buff=.5),
+            Arrow(p_2, p_t, buff=.5),
+            Arrow(p_3, p_t, buff=.5),
+        ]
+
+        st_capacities = [
+            MathTex("0", "/", "1", font_size=36).next_to(arrow.get_center(), direction=UP)
+            for arrow in st_arrows
+        ]
+
+        self.play(LaggedStart(
+            Write(source),
+            *[GrowArrow(x) for x in st_arrows[:3]],
+            *[Write(x) for x in st_capacities[:3]],
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+
+        self.play(LaggedStart(
+            Write(sink),
+            *[GrowArrow(x) for x in st_arrows[3:]],
+            *[Write(x) for x in st_capacities[3:]],
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+
+        for obj in arrows + st_arrows + text[0] + text[1] + [source, sink]:
+            obj.set_z_index(10)
+        
+        flow1 = Path(p_s, p_a, p_1, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
+        self.play(LaggedStart(
+            Create(flow1, run_time=1.6),
+            set_fill(st_capacities, 0, "1"),
+            set_fill(capacities, 0, "1"),
+            set_fill(st_capacities, 3, "1"),
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+
+        flow2 = Path(p_s, p_b, p_3, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
+        self.play(LaggedStart(
+            Create(flow2, run_time=1.6),
+            set_fill(st_capacities, 1, "1"),
+            set_fill(capacities, 4, "1"),
+            set_fill(st_capacities, 5, "1"),
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+
+        flow3 = Path(p_s, p_c, p_2, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
+        self.play(LaggedStart(
+            Create(flow3, run_time=1.6),
+            set_fill(st_capacities, 2, "1"),
+            set_fill(capacities, 3, "1"),
+            set_fill(st_capacities, 4, "1"),
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+
+        self.play(Circumscribe(VGroup(VGroup(*st_capacities[:3])), buff=.2))
+        self.wait(.25)
+        self.play(Circumscribe(VGroup(VGroup(*text[0])), buff=.2))
+        self.wait(.25)
+        self.play(Circumscribe(VGroup(VGroup(*st_capacities[3:])), buff=.2))
+        self.wait(.25)
+        self.play(Circumscribe(VGroup(VGroup(*text[1])), buff=.2))
+        self.wait(.25)
+
+        flow_direction = Arrow(p_a + UP, p_1 + UP, color=YELLOW)
+        self.play(GrowArrow(flow_direction))
+        self.wait(.25)
+        self.play(FadeOut(flow_direction))
+        self.wait(.25)
+        
+        self.play(Circumscribe(VGroup(VGroup(*text[1])), buff=.2))
+        self.wait(.25)
+        self.play(LaggedStart(
+            *(Indicate(a) for a in st_arrows[3:]),
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+        flow_direction = Arrow([00, 0, 0], [1, 0, 0], color=YELLOW, ).set_stroke(width=8).next_to(sink, DOWN, buff=.3)
+        self.play(GrowArrow(flow_direction))
+        self.wait(.25)
+        self.play(FadeOut(flow_direction))
+        self.wait(.25)
+
+        self.play(AnimationGroup(
+            *[set_fill(capacities, i, 0) for i in range(len(capacities))],
+            *[set_fill(st_capacities, i, 0) for i in range(len(st_capacities))],
+            FadeOut(flow1),
+            FadeOut(flow2),
+            FadeOut(flow3),
+        ))
+        self.wait(.25)
+
+        def set_cap(capacities, i, s):
+            return Transform(capacities[i][2], MathTex(s, font_size=36).move_to(capacities[i][2]))
+            
+        self.play(AnimationGroup(
+            *[set_cap(st_capacities, i, "2") for i in range(3, 6)]
+        ))
+        self.wait(.25)
+
+        flow1 = Path(p_s, p_a, p_2, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
+        self.play(LaggedStart(
+            Create(flow1, run_time=1.6),
+            set_fill(st_capacities, 0, "1"),
+            set_fill(capacities, 1, "1"),
+            set_fill(st_capacities, 4, "1"),
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+        flow2 = Path(p_s, p_c, p_2, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
+        self.play(LaggedStart(
+            Create(flow2, run_time=1.6),
+            set_fill(st_capacities, 2, "1"),
+            set_fill(capacities, 3, "1"),
+            set_fill(st_capacities, 4, "2"),
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+        # flow3 = Path(p_s, p_b, p_3, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
+        # self.play(LaggedStart(
+        #     Create(flow3, run_time=1.6),
+        #     set_fill(st_capacities, 1, "1"),
+        #     set_fill(capacities, 4, "1"),
+        #     set_fill(st_capacities, 5, "1"),
+        #     lag_ratio=0.15
+        # ))
+        # self.wait(.25)
+
+        self.play(AnimationGroup(
+            *[set_fill(capacities, i, 0) for i in range(len(capacities))],
+            *[set_fill(st_capacities, i, 0) for i in range(len(st_capacities))],
+            *[set_cap(st_capacities, i, 1) for i in range(len(st_capacities))],
+            FadeOut(flow1),
+            FadeOut(flow2),
+            # FadeOut(flow3),
+        ))
+        self.wait(.25)
+
+        self.play(AnimationGroup(
+            *[set_cap(st_capacities, i, "2") for i in range(3)]
+        ))
+        self.wait(.25)
+
+        flow1 = Path(p_s, p_b, p_2, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
+        self.play(LaggedStart(
+            Create(flow1, run_time=1.6),
+            set_fill(st_capacities, 1, "1"),
+            set_fill(capacities, 2, "1"),
+            set_fill(st_capacities, 4, "1"),
+            lag_ratio=0.15
+        ))
+        self.wait(.25)
+        flow2 = Path(p_s, p_b, p_3, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
+        self.play(LaggedStart(
+            Create(flow2, run_time=1.6),
+            set_fill(st_capacities, 1, "2"),
+            set_fill(capacities, 3, "1"),
+            set_fill(st_capacities, 5, "1"),
+            lag_ratio=0.15
         ))
         self.wait(.25)
 
