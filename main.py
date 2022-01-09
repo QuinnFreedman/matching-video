@@ -50,7 +50,7 @@ class Graph:
         self.dashed_color = dashed_color
 
     def get_group(self):
-        return Group(
+        return VGroup(
             *self.points.values(),
             *self.lines.values(),
         )
@@ -91,8 +91,8 @@ class Graph:
             return Line(p1, p2, stroke_width=10*self.scale, stroke_color=self.solid_color)
 
     def _make_edge(self, edge):
-        p1 = self.points[edge[0]]
-        p2 = self.points[edge[1]]
+        p1 = self.points[edge[0]].get_center()
+        p2 = self.points[edge[1]].get_center()
         if edge in self.matching:
             return self.ConnectedEdge(p1, p2)
         else:
@@ -852,6 +852,79 @@ class MaximumMatchingIntro(Scene):
             lag_ratio=0.15
         ))
         self.wait(.25)
+
+
+class FourProblems(Scene):
+    def construct(self):
+        graph_scale = .6
+        def scale_map(map, scalar):
+            return {k: [scalar * x for x in v] for k, v in map.items()}
+
+        def make_general_graph():
+            g = Graph(scale_map({
+                "A": [ 0,            1,           0],
+                "B": [ sin(2*pi/5),  cos(2*pi/5), 0],
+                "C": [ sin(4*pi/5), -cos(  pi/5), 0],
+                "D": [-sin(4*pi/5), -cos(  pi/5), 0],
+                "E": [-sin(2*pi/5),  cos(2*pi/5), 0],
+                "F": [0,             0,           0],
+            }, graph_scale), scale=graph_scale)
+
+            vertices = ["A", "B", "C", "D", "E"]
+            for i in range(5):
+                g.add_edge(vertices[i], vertices[(i+1)%5])
+                g.match(vertices[i], vertices[(i+1)%5])
+                g.add_edge(vertices[i], "F")
+                g.match(vertices[i], "F")
+            
+            return g
+
+        def make_bipartite_graph():
+            g = Graph(scale_map({
+                "A": [0, 0, 0],
+                "B": [0, 1, 0],
+                "C": [0, 2, 0],
+                "D": [1.5, 0, 0],
+                "E": [1.5, 1, 0],
+                "F": [1.5, 2, 0],
+            }, graph_scale), scale=graph_scale)
+
+            for a in ["A", "B", "C"]:
+                for b in ["D", "E", "F"]:
+                    g.add_edge(a, b)
+                    g.match(a, b)
+            
+            return g
+        
+        grid_size = 2.5
+
+        general = make_general_graph()
+        general.draw_points(self)
+        general.draw_edges(self)
+        general.get_group().move_to([grid_size, 0, 0])
+
+        bipartite = make_bipartite_graph()
+        bipartite.draw_points(self)
+        bipartite.draw_edges(self)
+        bipartite.get_group().move_to([grid_size * 2, 0, 0])
+
+        unweighted = Tex("Unweighted").move_to([0, -grid_size, 0])
+        weighted = Tex("Weighted").move_to([0, -grid_size * 2, 0])
+        self.add(unweighted)
+        self.add(weighted)
+
+        lines = [
+            Line([0.5 * grid_size, 0.5 * grid_size, 0], [0.5 * grid_size, -2.5 * grid_size, 0]),
+            Line([1.5 * grid_size, 0.5 * grid_size, 0], [1.5 * grid_size, -2.5 * grid_size, 0]),
+            Line([-0.5 * grid_size, -0.5 * grid_size, 0], [2.5 * grid_size, -0.5 * grid_size, 0]),
+            Line([-0.5 * grid_size, -1.5 * grid_size, 0], [2.5 * grid_size, -1.5 * grid_size, 0]),
+        ]
+        for l in lines:
+            self.add(l)
+
+        all = Group(general.get_group(), bipartite.get_group(), unweighted, weighted, *lines).move_to(ORIGIN)
+
+
 
 
 class AugmentingPath(Scene):
