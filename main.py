@@ -890,7 +890,7 @@ class AugmentingPath(Scene):
         
         self.play(graph.shift(np.array([-4, 0, 0])))
 
-        self.wait(1)
+        self.wait(.25)
 
         text = [
             MarkupText("Augmenting Path", font_size=32),
@@ -905,20 +905,32 @@ class AugmentingPath(Scene):
         self.play(Create(ul))
         for i in range(1, len(text)):
             text[i].next_to(text[i-1], DOWN, aligned_edge=LEFT)
+            
+        for line in text[1:-1]:
             self.wait(.25)
-            self.play(FadeIn(text[i]))
+            self.play(FadeIn(line))
 
+        self.wait(.25)
+
+        paths = [graph.highlight_path(*path) for path in
+                 [["A", "B", "C", "F"], ["A", "B", "C", "D", "E", "F"]]]
+                 
+        self.play(Create(paths[0]))
+        self.wait(.25)
+        self.play(FadeOut(paths[0]))
+        self.wait(.25)
+        self.play(Create(paths[1]))
+        self.wait(.25)
+        self.play(Circumscribe(Dot(radius=1).move_to(graph.lines[("A", "B")].get_center()), shape=Circle, color=BLUE))
+        self.wait(.25)
+        self.play(Circumscribe(Dot(radius=1).move_to(graph.lines[("E", "F")].get_center()), shape=Circle, color=BLUE))
+        self.wait(.25)
+
+        self.play(FadeIn(text[-1]))
+        self.wait(.25)
         
-        self.wait(1)
-
-        for path in [["A", "B", "C", "F"], ["A", "B", "C", "D", "E", "F"]]:
-            path_hl = graph.highlight_path(*path)
-            self.play(Create(path_hl))
-            self.wait(1)
-            self.play(FadeOut(path_hl))
-            self.wait(1)
-
-        self.wait(1)
+        # self.play(FadeOut(paths[1]))
+        # self.wait(.25)
 
         self.play(AnimationGroup(
             graph.apply_to_all(FadeOut),
@@ -1210,12 +1222,13 @@ class NoAPImpliesMaximum(Scene):
 
         self.play(AnimationGroup(
             *[FadeOut(m) for m in [subtitle, proof, d1, d2]],
-            *g2.apply_to_all(FadeOut),
-            *g4.apply_to_all(FadeOut),
-            *g5.apply_to_all(FadeOut),
-            *g6.apply_to_all(FadeOut),
+            g2.apply_to_all(FadeOut),
+            g4.apply_to_all(FadeOut),
+            g5.apply_to_all(FadeOut),
+            g6.apply_to_all(FadeOut),
+            FadeOut(g6_copy),
             ))
-        self.play(Transform(lemma[1], MathTex(r"\iff{}")))
+        self.play(Transform(arrow, lemma[1]))
         
 
 class AugmentAlgorithm(Scene):
