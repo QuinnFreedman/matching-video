@@ -1543,6 +1543,63 @@ class Blossom(Scene):
         dd_edge = graph.UnconnectedEdge(graph_points["D"], dd)
         ee_edge = graph.UnconnectedEdge(graph_points["E"], ee)
 
+        for p in graph.points.values():
+            p.set_z_index(10)
+
+        self.play(LaggedStart(
+            FocusOn(graph_points["A"]),
+            graph.points["A"].animate.set_fill(color=YELLOW),
+            lag_ratio=.4
+            ))
+        self.wait(.25)
+
+        a = graph_points["A"]
+        b = graph_points["B"]
+        d = graph_points["D"]
+        e = graph_points["E"]
+        ab = b - a
+        ae = e - a
+        choice_a = Arrow(a - .2 * ae, a - .2 * ae + .6 * ab, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=.1)
+        choice_b = Arrow(a - .2 * ab, a - .2 * ab + .6 * ae, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=.1)
+        self.play(LaggedStart(
+            GrowArrow(choice_a),
+            GrowArrow(choice_b),
+            lag_ratio=.2
+            ))
+            
+        self.wait(.25)
+        self.play(LaggedStart(
+            FocusOn(graph_points["D"]),
+            graph.points["D"].animate.set_fill(color=YELLOW),
+            FadeIn(dd_edge),
+            FadeOut(VGroup(choice_a, choice_b)),
+            lag_ratio=.4
+            ))
+        self.wait(.25)
+
+        choice_a = ArcBetweenPoints(start=a, end=d, radius=2, stroke_color=YELLOW)
+        choice_b = Arc(start_angle=(PI/2 + 2*PI/5), angle=-(3 * 2*PI / 5), radius=2, stroke_color=YELLOW)
+        self.play(Create(choice_a))
+        self.wait(.25)
+        out = Arrow(dd_edge.get_start() + .7 * RIGHT, dd_edge.get_end() + .7 * RIGHT, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=0)
+        self.play(GrowArrow(out))
+        self.wait(.25)
+        self.play(AnimationGroup(
+            Create(choice_b),
+            FadeOut(choice_a)
+            ))
+        self.wait(.25)
+        self.play(FadeOut(out))
+        self.wait(.25)
+        self.play(AnimationGroup(
+            FadeOut(choice_b),
+            graph.points["A"].animate.set_fill(color=WHITE),
+            graph.points["D"].animate.set_fill(color=WHITE),
+            FadeOut(dd_edge),
+            ))
+        self.wait(.25)
+            
+
         self.play(AnimationGroup(
             *[FadeIn(e) for e in [aa_edge, cc_edge, dd_edge, ee_edge]]
         ))
