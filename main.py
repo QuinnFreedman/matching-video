@@ -1535,6 +1535,11 @@ class AugmentAlgorithmCounterexample(Scene):
             ))
         self.wait(.25)
 
+        self.play(AnimationGroup(
+            FadeOut(p3),
+            FadeOut(count),
+        ))
+
 
 class BipartiteAnimation(Scene):
     def construct(self):
