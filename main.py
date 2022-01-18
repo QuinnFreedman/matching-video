@@ -1,10 +1,23 @@
+from this import s
 from manim import *
 from manim.animation.animation import DEFAULT_ANIMATION_RUN_TIME
 from manim.mobject.opengl_compatibility import ConvertToOpenGL
+from manim_presentation import Slide #as MyScene
 from typing import Callable, Iterable, Optional, Sequence
 from math import sin, cos, pi, sqrt
 
 from numpy import left_shift
+
+# class MyScene(Slide):
+#     def __init__(self, *args, **kwargs):
+#         super(MyScene, self).__init__(*args, **kwargs)
+    
+class MyScene(Scene):
+    def __init__(self, *args, **kwargs):
+        super(MyScene, self).__init__(*args, **kwargs)
+    
+    def pause(self):
+        self.wait(0.25)
 
 
 class IndicateEdges(Transform):
@@ -63,10 +76,11 @@ class Graph:
     def draw_points(self, scene):
         scene.add(*self.points.values())
 
-    def apply_to_all(self, animation):
+    def apply_to_all(self, animation, **kwargs):
         return AnimationGroup(
             *[animation(p) for p in self.points.values()],
-            *[animation(l) for l in self.lines.values()]
+            *[animation(l) for l in self.lines.values()],
+            **kwargs
         )
 
     def shift(self, delta, animate=True):
@@ -97,12 +111,17 @@ class Graph:
             return self.ConnectedEdge(p1, p2)
         else:
             return self.UnconnectedEdge(p1, p2)
-
-    def draw_edges(self, scene):
+        
+    def make_edges(self):
         self.lines = {}
         for edge in self.edges:
             line = self._make_edge(edge)
             self.lines[edge] = line
+
+    def draw_edges(self, scene):
+        if not self.lines:
+            self.make_edges()
+        for line in self.lines:
             scene.add(line)
 
     def match(self, p1, p2):
@@ -132,7 +151,7 @@ class Graph:
 
         return animations
 
-    def rearange(self, new_points):
+    def rearrange(self, new_points):
         return AnimationGroup(
             *[dot.animate.move_to(new_points[key]) for key, dot in self.points.items()],
             *[self.lines[edge].animate.put_start_and_end_on(new_points[edge[0]], new_points[edge[1]]) for edge in self.edges],
@@ -190,7 +209,7 @@ def make_matte(w, h):
     )
 
 
-class StableMatching(Scene):
+class StableMatching(MyScene):
     def construct(self):
         text = [
             [
@@ -211,11 +230,11 @@ class StableMatching(Scene):
         ).arrange_in_grid(cols=2, flow_order="dr", col_widths=[3]*2, row_heights=[2]*3)
     
         self.play(FadeIn(grid))
-        self.wait(.25)
+        self.pause()
         self.play(Circumscribe(VGroup(*text[0]), time_width=0.5, buff=0.2))
-        self.wait(.25)
+        self.pause()
         self.play(Circumscribe(VGroup(*text[1]), time_width=0.5, buff=0.2))
-        self.wait(.25)
+        self.pause()
 
         def edge(a, b):
             return Arrow(text[a[0]][a[1]].get_center(), text[b[0]][b[1]].get_center(), buff=0.5)
@@ -230,12 +249,12 @@ class StableMatching(Scene):
             *[GrowArrow(a) for a in matching1],
             lag_ratio=0.25
         ))
-        self.wait(.25)
+        self.pause()
         self.play(LaggedStart(
             *[FadeOut(a) for a in matching1],
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
 
         matching2 = [
             edge((0,0), (1,0)),
@@ -247,12 +266,12 @@ class StableMatching(Scene):
             *[GrowArrow(a) for a in matching2],
             lag_ratio=0.25
         ))
-        self.wait(.25)
+        self.pause()
         self.play(LaggedStart(
             *[FadeOut(a) for a in matching2],
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
 
         show, hide = make_matte(8, 2)
         popup_text = Group(
@@ -265,9 +284,9 @@ class StableMatching(Scene):
             Write(popup_text[0]),
             lag_ratio=0.2
             ))
-        self.wait(.25)
+        self.pause()
         self.play(Write(popup_text[1]))
-        self.wait(.25)
+        self.pause()
 
         self.play(LaggedStart(
             FadeOut(popup_text[0]),
@@ -277,7 +296,7 @@ class StableMatching(Scene):
                 0
             ])
         ))
-        self.wait(.25)
+        self.pause()
 
         popup_text_2 = Group(
             Text("Stable\nmatching", should_center=True, font_size=36, line_spacing=.5),
@@ -290,15 +309,15 @@ class StableMatching(Scene):
             FadeIn(popup_text_2),
             lag_ratio=0.4
         ))
-        self.wait(.25)
+        self.pause()
         self.play(Indicate(popup_text_2[0]))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             hide,
             FadeOut(popup_text_2)
             ))
-        self.wait(.25)
+        self.pause()
 
         pref_squares = [
             VGroup(*[Square(.26) for _ in range(3)])
@@ -331,32 +350,32 @@ class StableMatching(Scene):
             *[Write(x) for x in prefs_mtext[0]],
             lag_ratio=0.4
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(LaggedStart(
             *[Create(prefs) for prefs in pref_squares[1:3]],
             *[Write(x) for pref_group in prefs_mtext[1:3] for x in pref_group],
             lag_ratio=0.3
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(LaggedStart(
             *[Create(prefs) for prefs in pref_squares[3:]],
             *[Write(x) for pref_group in prefs_mtext[3:] for x in pref_group],
             lag_ratio=0.3
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             Indicate(prefs_mtext[0][0]),
             IndicateEdges(pref_squares[0][0], scale_factor=1.5),
         ))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             Indicate(prefs_mtext[3][1]),
             IndicateEdges(pref_squares[3][1], scale_factor=1.5),
         ))
-        self.wait(.25)
+        self.pause()
 
         # matte_stack = [
         #     Rectangle(width=10,  height=10).set_fill(color=BLACK, opacity=0.5).set_stroke(width=0),
@@ -367,26 +386,26 @@ class StableMatching(Scene):
         #     FadeIn(VGroup(*matte_stack)),
         #     Write(stable_matching_text)
         # ))
-        # self.wait(.25)
+        # self.pause()
 
         # self.play(AnimationGroup(
         #     FadeOut(VGroup(*matte_stack)),
         #     FadeOut(stable_matching_text),
         # ))
-        # self.wait(.25)
+        # self.pause()
 
         self.play(LaggedStart(
             *[GrowArrow(a) for a in matching1],
             lag_ratio=0.25
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(LaggedStart(
             Indicate(text[0][0]),
             Indicate(text[1][0]),
             lag_ratio=0.8
         ))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             Indicate(prefs_mtext[0][1]),
             Indicate(prefs_mtext[3][2]),
@@ -395,14 +414,14 @@ class StableMatching(Scene):
             Indicate(matching1[0]),
             Indicate(matching1[2]),
         ))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             Indicate(prefs_mtext[0][0]),
             Indicate(prefs_mtext[3][1]),
             IndicateEdges(pref_squares[0][0], scale_factor=1.5),
             IndicateEdges(pref_squares[3][1], scale_factor=1.5),
         ))
-        self.wait(.25)
+        self.pause()
 
         matching1[0].set_z_index(-1)
         matching1[2].set_z_index(-1)
@@ -410,28 +429,28 @@ class StableMatching(Scene):
             matching1[0].animate.set_stroke(color=GRAY_E).set_fill(color=GRAY_E),
             matching1[2].animate.set_stroke(color=GRAY_E).set_fill(color=GRAY_E),
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(Circumscribe(
             VGroup(text[0][0], text[1][0], *prefs_mtext[0], *prefs_mtext[3])
         ))
-        self.wait(.25)
+        self.pause()
 
         extra_edge = edge((0,0), (1,0))
         self.play(GrowArrow(extra_edge))
-        self.wait(.25)
+        self.pause()
         
         self.play(AnimationGroup(
             Indicate(text[0][2]),
             Indicate(text[1][1])
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             *[FadeOut(a) for a in matching1],
             FadeOut(extra_edge)
         ))
-        self.wait(.25)
+        self.pause()
 
         matching3 = [
             edge((0,0), (1,1)),
@@ -442,34 +461,34 @@ class StableMatching(Scene):
             *[GrowArrow(a) for a in matching3],
             lag_ratio=0.25
         ))
-        self.wait(.25)
+        self.pause()
         
         self.play(AnimationGroup(
             Indicate(prefs_mtext[0][1]),
             IndicateEdges(pref_squares[0][1], scale_factor=1.5),
             Indicate(matching3[0])
         ))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             Indicate(prefs_mtext[0][0]),
             IndicateEdges(pref_squares[0][0], scale_factor=1.5),
         ))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             Indicate(prefs_mtext[3][0]),
             IndicateEdges(pref_squares[3][0], scale_factor=1.5),
             Indicate(matching3[1])
         ))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             *(FadeOut(x) for y in prefs_mtext for x in y),
             *(FadeOut(x) for x in pref_squares),
             *(FadeOut(x) for x in matching3)
         ))
-        self.wait(.25)
+        self.pause()
 
 
-class StableVsMaximumTable(Scene):
+class StableVsMaximumTable(MyScene):
     def construct(self):
         stable = Tex("Stable Matching", font_size=64).move_to([-3.5, 0, 0])
         maximum = Tex("Maximum Matching", font_size=64).move_to([3.5, 0, 0])
@@ -506,15 +525,15 @@ class StableVsMaximumTable(Scene):
             lag_ratio=.2
         ))
 
-        self.wait(.25)
+        self.pause()
         for l in list_left:
             self.play(Write(l))
-            self.wait(.25)
+            self.pause()
         self.play(Write(maximum))
-        self.wait(.25)
+        self.pause()
         for l in list_right:
             self.play(Write(l))
-            self.wait(.25)
+            self.pause()
 
         self.add(titles)
         self.add(hline)
@@ -522,8 +541,7 @@ class StableVsMaximumTable(Scene):
         self.add(list_right)
 
 
-
-class MaximumMatchingIntro(Scene):
+class MaximumMatchingIntro(MyScene):
     def construct(self):
         text = [
             [
@@ -543,7 +561,7 @@ class MaximumMatchingIntro(Scene):
             *text[1]
         ).arrange_in_grid(cols=2, flow_order="dr", col_widths=[3]*2, row_heights=[2]*3)
         self.add(grid)
-        self.wait(.25)
+        self.pause()
 
         p_a = text[0][0].get_center()
         p_b = text[0][1].get_center()
@@ -568,7 +586,7 @@ class MaximumMatchingIntro(Scene):
         self.play(AnimationGroup(
             *(FadeIn(e) for e in edges)
         ))
-        self.wait(.25)
+        self.pause()
 
         l1 = solid_line(p_a, p_1)
         l2 = solid_line(p_b, p_2)
@@ -576,16 +594,16 @@ class MaximumMatchingIntro(Scene):
             GrowFromCenter(l1),
             FadeOut(edges[0]),
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             GrowFromCenter(l2),
             FadeOut(edges[2]),
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(Indicate(text[0][2]))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             ShrinkToCenter(l1),
@@ -593,7 +611,7 @@ class MaximumMatchingIntro(Scene):
             FadeIn(edges[0]),
             FadeIn(edges[2]),
         ))
-        self.wait(.25)
+        self.pause()
         
         l1 = solid_line(p_a, p_1)
         l3 = solid_line(p_b, p_3)
@@ -613,7 +631,7 @@ class MaximumMatchingIntro(Scene):
             ),
             lag_ratio=0.25
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             ShrinkToCenter(l1),
@@ -623,7 +641,7 @@ class MaximumMatchingIntro(Scene):
             FadeIn(edges[3]),
             FadeIn(edges[4]),
         ))
-        self.wait(.25)
+        self.pause()
 
         p_a += LEFT
         p_b += LEFT
@@ -643,7 +661,7 @@ class MaximumMatchingIntro(Scene):
             Transform(edges[3], dashed_line(p_b, p_3)),
             Transform(edges[4], dashed_line(p_c, p_2)),
         ))
-        self.wait(.25)
+        self.pause()
 
         arrows = [Arrow(e.get_start(), e.get_end(), buff=0) for e in edges]
         self.play(LaggedStart(
@@ -668,15 +686,15 @@ class MaximumMatchingIntro(Scene):
             *[Write(x) for x in capacities],
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
 
         def set_fill(capacities, i, s):
             return Transform(capacities[i][0], MathTex(s, font_size=36).move_to(capacities[i][0]))
 
         self.play(set_fill(capacities, 0, "1"))
-        self.wait(.25)
+        self.pause()
         self.play(set_fill(capacities, 0, "0"))
-        self.wait(.25)
+        self.pause()
 
         source = MathTex("s", font_size=64).next_to(p_b, direction=LEFT, buff=3)
         sink = MathTex("t", font_size=64).next_to(p_2, direction=RIGHT, buff=3)
@@ -703,7 +721,7 @@ class MaximumMatchingIntro(Scene):
             *[Write(x) for x in st_capacities[:3]],
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(LaggedStart(
             Write(sink),
@@ -711,7 +729,7 @@ class MaximumMatchingIntro(Scene):
             *[Write(x) for x in st_capacities[3:]],
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
 
         for obj in arrows + st_arrows + text[0] + text[1] + [source, sink]:
             obj.set_z_index(10)
@@ -724,7 +742,7 @@ class MaximumMatchingIntro(Scene):
             set_fill(st_capacities, 3, "1"),
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
 
         flow2 = Path(p_s, p_b, p_3, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
         self.play(LaggedStart(
@@ -734,7 +752,7 @@ class MaximumMatchingIntro(Scene):
             set_fill(st_capacities, 5, "1"),
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
 
         flow3 = Path(p_s, p_c, p_2, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
         self.play(LaggedStart(
@@ -744,35 +762,35 @@ class MaximumMatchingIntro(Scene):
             set_fill(st_capacities, 4, "1"),
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(Circumscribe(VGroup(VGroup(*st_capacities[:3])), buff=.2))
-        self.wait(.25)
+        self.pause()
         self.play(Circumscribe(VGroup(VGroup(*text[0])), buff=.2))
-        self.wait(.25)
+        self.pause()
         self.play(Circumscribe(VGroup(VGroup(*st_capacities[3:])), buff=.2))
-        self.wait(.25)
+        self.pause()
         self.play(Circumscribe(VGroup(VGroup(*text[1])), buff=.2))
-        self.wait(.25)
+        self.pause()
 
         flow_direction = Arrow(p_a + UP, p_1 + UP, color=YELLOW)
         self.play(GrowArrow(flow_direction))
-        self.wait(.25)
+        self.pause()
         self.play(FadeOut(flow_direction))
-        self.wait(.25)
+        self.pause()
         
         self.play(Circumscribe(VGroup(VGroup(*text[1])), buff=.2))
-        self.wait(.25)
+        self.pause()
         self.play(LaggedStart(
             *(Indicate(a) for a in st_arrows[3:]),
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
         flow_direction = Arrow([00, 0, 0], [1, 0, 0], color=YELLOW, ).set_stroke(width=8).next_to(sink, DOWN, buff=.3)
         self.play(GrowArrow(flow_direction))
-        self.wait(.25)
+        self.pause()
         self.play(FadeOut(flow_direction))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             *[set_fill(capacities, i, 0) for i in range(len(capacities))],
@@ -781,7 +799,7 @@ class MaximumMatchingIntro(Scene):
             FadeOut(flow2),
             FadeOut(flow3),
         ))
-        self.wait(.25)
+        self.pause()
 
         def set_cap(capacities, i, s):
             return Transform(capacities[i][2], MathTex(s, font_size=36).move_to(capacities[i][2]))
@@ -789,7 +807,7 @@ class MaximumMatchingIntro(Scene):
         self.play(AnimationGroup(
             *[set_cap(st_capacities, i, "2") for i in range(3, 6)]
         ))
-        self.wait(.25)
+        self.pause()
 
         flow1 = Path(p_s, p_a, p_2, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
         self.play(LaggedStart(
@@ -799,7 +817,7 @@ class MaximumMatchingIntro(Scene):
             set_fill(st_capacities, 4, "1"),
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
         flow2 = Path(p_s, p_c, p_2, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
         self.play(LaggedStart(
             Create(flow2, run_time=1.6),
@@ -808,7 +826,7 @@ class MaximumMatchingIntro(Scene):
             set_fill(st_capacities, 4, "2"),
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
         # flow3 = Path(p_s, p_b, p_3, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
         # self.play(LaggedStart(
         #     Create(flow3, run_time=1.6),
@@ -817,7 +835,7 @@ class MaximumMatchingIntro(Scene):
         #     set_fill(st_capacities, 5, "1"),
         #     lag_ratio=0.15
         # ))
-        # self.wait(.25)
+        # self.pause()
 
         self.play(AnimationGroup(
             *[set_fill(capacities, i, 0) for i in range(len(capacities))],
@@ -827,12 +845,12 @@ class MaximumMatchingIntro(Scene):
             FadeOut(flow2),
             # FadeOut(flow3),
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             *[set_cap(st_capacities, i, "2") for i in range(3)]
         ))
-        self.wait(.25)
+        self.pause()
 
         flow1 = Path(p_s, p_b, p_2, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
         self.play(LaggedStart(
@@ -842,7 +860,7 @@ class MaximumMatchingIntro(Scene):
             set_fill(st_capacities, 4, "1"),
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
         flow2 = Path(p_s, p_b, p_3, p_t).set_stroke(color=BLUE, opacity=.5, width=20)
         self.play(LaggedStart(
             Create(flow2, run_time=1.6),
@@ -851,10 +869,25 @@ class MaximumMatchingIntro(Scene):
             set_fill(st_capacities, 5, "1"),
             lag_ratio=0.15
         ))
-        self.wait(.25)
+        self.pause()
+        # self.play(AnimationGroup(
+        #     *[set_cap(st_capacities, i, "1") for i in range(3)],
+        #     *[set_fill(capacities, i, 0) for i in range(len(capacities))],
+        #     *[set_fill(st_capacities, i, 0) for i in range(len(st_capacities))],
+        #     FadeOut(flow1),
+        #     FadeOut(flow2),
+        # ))
+        # self.pause()
+        everything = VGroup(*arrows, *st_arrows, *capacities, *st_capacities, grid, source, sink)
+        self.play(AnimationGroup(
+            FadeOut(everything),
+            FadeOut(flow1),
+            FadeOut(flow2),
+        ))
+        self.pause()
 
 
-class FourProblems(Scene):
+class FourProblems(MyScene):
     def construct(self):
         graph_scale = .6
         def scale_map(map, scalar):
@@ -899,19 +932,15 @@ class FourProblems(Scene):
         grid_size = 2.5
 
         general = make_general_graph()
-        general.draw_points(self)
-        general.draw_edges(self)
-        general.get_group().move_to([grid_size, 0, 0])
+        general.make_edges()
+        general_group = general.get_group().move_to([grid_size * 2, 0, 0])
 
         bipartite = make_bipartite_graph()
-        bipartite.draw_points(self)
-        bipartite.draw_edges(self)
-        bipartite.get_group().move_to([grid_size * 2, 0, 0])
+        bipartite.make_edges()
+        bipartite_group = bipartite.get_group().move_to([grid_size, 0, 0])
 
-        unweighted = Tex("Unweighted").move_to([0, -grid_size, 0])
-        weighted = Tex("Weighted").move_to([0, -grid_size * 2, 0])
-        self.add(unweighted)
-        self.add(weighted)
+        weighted = Tex("Weighted").move_to([-.15, -grid_size * 2, 0])
+        unweighted = Tex("Unweighted").move_to([0, -grid_size, 0]).align_to(weighted, RIGHT)
 
         lines = [
             Line([0.5 * grid_size, 0.5 * grid_size, 0], [0.5 * grid_size, -2.5 * grid_size, 0]),
@@ -919,37 +948,61 @@ class FourProblems(Scene):
             Line([-0.5 * grid_size, -0.5 * grid_size, 0], [2.5 * grid_size, -0.5 * grid_size, 0]),
             Line([-0.5 * grid_size, -1.5 * grid_size, 0], [2.5 * grid_size, -1.5 * grid_size, 0]),
         ]
-        for l in lines:
-            self.add(l)
+        numbers = [
+            MathTex("1", font_size=72).move_to([    grid_size,     -grid_size, 0]),
+            MathTex("2", font_size=72).move_to([2 * grid_size,     -grid_size, 0]),
+            MathTex("3", font_size=72).move_to([    grid_size, -2 * grid_size, 0]),
+            MathTex("4", font_size=72).move_to([2 * grid_size, -2 * grid_size, 0]),
+        ]
+        cursor = Square(grid_size - 0.1, stroke_color=YELLOW, stroke_width=10).move_to([grid_size, -grid_size, 0])
+        all = Group(general.get_group(), bipartite.get_group(), unweighted, weighted, *lines, cursor, *numbers).move_to(ORIGIN)
+        
+        self.play(LaggedStart(
+            *[Create(x) for x in lines],
+            lag_ratio=.2
+        ))
+        self.pause()
+        self.play(bipartite.apply_to_all(lambda x: Create(x, run_time=.5), lag_ratio=.1))
+        self.pause()
+        self.play(general.apply_to_all(lambda x: Create(x, run_time=.5), lag_ratio=.1))
+        self.pause()
+        self.play(Write(unweighted))
+        self.pause()
+        self.play(Write(weighted))
+        self.pause()
 
-        all = Group(general.get_group(), bipartite.get_group(), unweighted, weighted, *lines).move_to(ORIGIN)
+        self.play(Create(cursor))
+        self.pause()
+
+        self.play(LaggedStart(
+            *[Write(x) for x in numbers],
+            lag_ratio=.4
+        ))
 
 
-
-
-class AugmentingPath(Scene):
+class AugmentingPath(MyScene):
     def construct(self):
         graph = _make_even_cycle_graph()
         graph.draw_points(self)
         graph.draw_edges(self)
 
-        self.wait(1)
+        self.pause()
 
         graph.match("B", "C")
         graph.match("D", "E")
         self.play(AnimationGroup(*graph.update_matching()))
-        self.wait(.25)
+        self.pause()
         
         graph.unmatch("B", "C")
         graph.unmatch("D", "E")
         self.play(AnimationGroup(*graph.update_matching()))
-        self.wait(.25)
+        self.pause()
         
         graph.match("A", "B")
         graph.match("C", "D")
         graph.match("E", "F")
         self.play(AnimationGroup(*graph.update_matching()))
-        self.wait(.25)
+        self.pause()
         
         graph.unmatch("A", "B")
         graph.unmatch("C", "D")
@@ -959,11 +1012,11 @@ class AugmentingPath(Scene):
         graph.match("D", "E")
         self.play(AnimationGroup(*graph.update_matching()))
         
-        self.wait(.25)
+        self.pause()
         
         self.play(graph.shift(np.array([-4, 0, 0])))
 
-        self.wait(.25)
+        self.pause()
 
         text = [
             MarkupText("Augmenting Path", font_size=32),
@@ -980,40 +1033,40 @@ class AugmentingPath(Scene):
             text[i].next_to(text[i-1], DOWN, aligned_edge=LEFT)
             
         for line in text[1:-1]:
-            self.wait(.25)
+            self.pause()
             self.play(FadeIn(line))
 
-        self.wait(.25)
+        self.pause()
 
         paths = [graph.highlight_path(*path) for path in
                  [["A", "B", "C", "F"], ["A", "B", "C", "D", "E", "F"]]]
                  
         self.play(Create(paths[0]))
-        self.wait(.25)
+        self.pause()
         self.play(FadeOut(paths[0]))
-        self.wait(.25)
+        self.pause()
         self.play(Create(paths[1]))
-        self.wait(.25)
+        self.pause()
         self.play(Circumscribe(Dot(radius=1).move_to(graph.lines[("A", "B")].get_center()), shape=Circle, color=BLUE))
-        self.wait(.25)
+        self.pause()
         self.play(Circumscribe(Dot(radius=1).move_to(graph.lines[("E", "F")].get_center()), shape=Circle, color=BLUE))
-        self.wait(.25)
+        self.pause()
 
         self.play(FadeIn(text[-1]))
-        self.wait(.25)
+        self.pause()
         
         # self.play(FadeOut(paths[1]))
-        # self.wait(.25)
+        # self.pause()
 
         self.play(AnimationGroup(
             graph.apply_to_all(FadeOut),
             *[FadeOut(t) for t in text],
             FadeOut(ul)
             ))
-        self.wait(.25)
+        self.pause()
 
 
-class MaximumImpliesNoAP(Scene):
+class MaximumImpliesNoAP(MyScene):
     def construct(self):
         lemma = Group(
             MathTex(r"M \textrm{ is maximum}"),
@@ -1021,14 +1074,14 @@ class MaximumImpliesNoAP(Scene):
             MathTex(r"\nexists \textrm{ augmenting path w.r.t } M"),
         ).arrange(RIGHT)
         self.play(FadeIn(lemma))
-        self.wait(.25)
+        self.pause()
         
         self.play(Transform(lemma[1], MathTex(r"\Longrightarrow{}").move_to(lemma[1])))
 
-        self.wait(.25)
+        self.pause()
         
         self.play(lemma.animate.to_edge(UP, buff=1))
-        self.wait(.25)
+        self.pause()
 
         graph = _make_even_cycle_graph()
         graph.match("B", "C")
@@ -1040,30 +1093,30 @@ class MaximumImpliesNoAP(Scene):
         
         path_hl = graph.highlight_path(*path)
         self.play(Create(path_hl))
-        self.wait(.25)
+        self.pause()
         
         graph.invert_path(*path)
         self.play(AnimationGroup(*graph.update_matching()))
-        self.wait(.25)
+        self.pause()
 
         graph.invert_path(*path)
         self.play(AnimationGroup(*graph.update_matching()))
-        self.wait(.25)
+        self.pause()
 
         graph.invert_path(*path)
         self.play(AnimationGroup(*graph.update_matching()))
-        self.wait(.25)
+        self.pause()
        
         augment = MathTex("M", "\oplus{} ", "P").next_to(graph.points["C"], direction=DOWN, buff=.5)
         self.play(FadeIn(augment))
-        self.wait(.25)
+        self.pause()
 
         graph.invert_path(*path)
         self.play(AnimationGroup(
             *graph.update_matching(),
             FadeOut(path_hl)
             ))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             Indicate(augment[0]),
@@ -1072,16 +1125,16 @@ class MaximumImpliesNoAP(Scene):
             Indicate(graph.lines[("D", "E")]),
             # Wiggle(graph.lines[("D", "E")]),
         ))
-        self.wait(.25)
+        self.pause()
         
         hl = Line(augment[2].get_center() + LEFT * 0.25, augment[2].get_center() + RIGHT * 0.25).set_stroke(color=YELLOW, width=48, opacity=0.5).set_z_index(-1)
         self.play(AnimationGroup(
             Create(hl),
             Create(path_hl)
             ))
-        self.wait(.25)
+        self.pause()
         self.play(FadeOut(hl))
-        self.wait(.25)
+        self.pause()
         augment2 = MathTex(r"|", r"M \oplus{} P", "| > |M|").next_to(graph.points["C"], direction=DOWN, buff=.5)
         self.play(augment.animate.move_to(augment2[1]))
         graph.invert_path(*path)
@@ -1090,25 +1143,25 @@ class MaximumImpliesNoAP(Scene):
             FadeOut(augment),
             AnimationGroup(*graph.update_matching())
         ))
-        self.wait(.25)
+        self.pause()
 
         graph.invert_path(*path)
         self.play(AnimationGroup(*graph.update_matching()))
-        self.wait(.25)
+        self.pause()
 
         graph.invert_path(*path)
         self.play(AnimationGroup(*graph.update_matching()))
-        self.wait(.25)
+        self.pause()
         
         self.play(AnimationGroup(
             graph.apply_to_all(FadeOut),
             FadeOut(path_hl),
             FadeOut(augment2),
         ))
-        self.wait(.25)
+        self.pause()
 
 
-class NoAPImpliesMaximum(Scene):
+class NoAPImpliesMaximum(MyScene):
     def construct(self):
         lemma = Group(
             MathTex(r"M \textrm{ is maximum}"),
@@ -1119,14 +1172,14 @@ class NoAPImpliesMaximum(Scene):
 
         self.add(lemma[0], lemma[2], arrow)
         self.play(Rotate(arrow))
-        self.wait(.25)
+        self.pause()
 
         subtitle = Tex(
             r"By contrapositive: $M$ is not maximum $\Longrightarrow{} M$ has an augmenting path",
             font_size=32,
             ).next_to(lemma, DOWN)
         self.play(FadeIn(subtitle))
-        self.wait(.25)
+        self.pause()
 
         lines = [
             r"&\textrm{Let }M'\textrm{ be a matching such that }|M'| > |M|\\",
@@ -1152,7 +1205,7 @@ class NoAPImpliesMaximum(Scene):
         proof.next_to(subtitle, DOWN, buff=.5).to_edge(LEFT)
         for line in proof[:-2]:
             self.play(FadeIn(line))
-            self.wait(.25)
+            self.pause()
 
         graph_scale = 0.6
         def g(a):
@@ -1254,29 +1307,29 @@ class NoAPImpliesMaximum(Scene):
             g.draw_points(self)
             g.draw_edges(self)
 
-        self.wait(.25)
+        self.pause()
         
         self.play(FadeIn(proof[-2]))
-        self.wait(.25)
+        self.pause()
 
         g3.get_group().to_edge(RIGHT, buff=.5)
         g3.draw_points(self)
         g3.draw_edges(self)
-        self.wait(.25)
+        self.pause()
         g3.unmatch("E", "A")
         self.play(AnimationGroup(*g3.update_matching()))
-        self.wait(.25)
+        self.pause()
         g3.match("E", "A")
         self.play(AnimationGroup(*g3.update_matching()))
-        self.wait(.25)
+        self.pause()
         g3.unmatch("E", "A")
         self.play(AnimationGroup(*g3.update_matching()))
-        self.wait(.25)
+        self.pause()
         self.play(g3.apply_to_all(FadeOut))
-        self.wait(.25)
+        self.pause()
 
         self.play(FadeIn(proof[-1][0])),
-        self.wait(.25)
+        self.pause()
 
         d1 = Dot(radius=.2, fill_color=BLUE).move_to(proof[-1][1][1])
         d2 = Dot(radius=.2, fill_color=YELLOW).move_to(proof[-1][1][3])
@@ -1288,10 +1341,10 @@ class NoAPImpliesMaximum(Scene):
             FadeIn(d2),
             g6_copy.animate.move_to([-5, proof[-1].get_center()[1], 0], LEFT).scale(0.4),
             ))
-        self.wait(.25)
+        self.pause()
 
         self.play(FadeIn(proof[-1][2])),
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             *[FadeOut(m) for m in [subtitle, proof, d1, d2]],
@@ -1304,7 +1357,7 @@ class NoAPImpliesMaximum(Scene):
         self.play(Transform(arrow, lemma[1]))
         
 
-class AugmentAlgorithm(Scene):
+class AugmentAlgorithm(MyScene):
     def construct(self):
         algo = MathTex(
             r"&\textbf{MaximumMatching}(G, M):\\",
@@ -1315,7 +1368,7 @@ class AugmentAlgorithm(Scene):
             ).to_edge(LEFT, buff=.5)
             
         self.play(FadeIn(algo))
-        self.wait(.25)
+        self.pause()
         
         halts = MathTex(r"\nexists P \Rightarrow M \textrm{ is maximum}", color=YELLOW)
         halts.next_to(algo.get_part_by_tex(r"augmenting path"), RIGHT, buff=.5)
@@ -1324,31 +1377,32 @@ class AugmentAlgorithm(Scene):
         monotonic.next_to(algo.get_part_by_tex(r"M \oplus P"), RIGHT, buff=.5)
         
         self.play(FadeIn(monotonic))
-        self.wait(.25)
+        self.pause()
         self.play(FadeIn(halts))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
             FadeOut(halts),
             FadeOut(monotonic),
         ))
-        self.wait(.25)
+        self.pause()
 
         self.play(Indicate(algo.get_part_by_tex("While")))
-        self.wait(.25)
+        self.pause()
         self.play(FadeOut(algo))
-        self.wait(.25)
-        
-class AugmentAlgorithmExample(Scene):
+        self.pause()
+
+
+class AugmentAlgorithmExample(MyScene):
     def construct(self):
         graph = _make_even_cycle_graph()
         graph.match("A", "B")
         graph.match("D", "E")
         graph.draw_points(self)
         graph.draw_edges(self)
-        self.wait(.25)
+        self.pause()
         self.play(graph.shift([-3, 0, 0]))
-        self.wait(.25)
+        self.pause()
 
         algo = VGroup(*[Tex(x, font_size=32) for x in [
             r"Select an unmatched vertex $v$",
@@ -1366,10 +1420,10 @@ class AugmentAlgorithmExample(Scene):
             FocusOn(graph.points["C"].get_center()),
             graph.points["C"].animate.set_fill(YELLOW)
             ))
-        self.wait(.25)
+        self.pause()
 
         self.play(FadeIn(algo[1]))
-        self.wait(.25)
+        self.pause()
 
         dfs = graph.highlight_path("C", "B", "A")
         self.play(Create(dfs))
@@ -1377,43 +1431,43 @@ class AugmentAlgorithmExample(Scene):
         dfs = graph.highlight_path("C", "D", "E", "F", "C")
         self.play(Create(dfs))
         self.play(Uncreate(dfs))
-        self.wait(.25)
+        self.pause()
 
         p1 = graph.highlight_path("C", "D")
         self.play(Create(p1))
-        self.wait(.25)
+        self.pause()
 
         self.play(FadeIn(algo[2]))
-        self.wait(.25)
+        self.pause()
         count = Text("1", color=YELLOW)
         count.next_to(graph.points["D"], UP)
         self.play(FadeIn(count))
-        self.wait(.25)
+        self.pause()
         
         self.play(FadeIn(algo[3]))
-        self.wait(.25)
+        self.pause()
         self.play(FadeIn(algo[4]))
-        self.wait(.25)
+        self.pause()
         
         p2 = graph.highlight_path("D", "E")
         self.play(AnimationGroup(
             Create(p2),
             Transform(count, Text("2", color=YELLOW).next_to(graph.points["E"], UP+RIGHT))
             ))
-        self.wait(.25)
+        self.pause()
         
         p3 = graph.highlight_path("E", "F")
         self.play(AnimationGroup(
             Create(p3),
             Transform(count, Text("3", color=YELLOW).next_to(graph.points["F"], RIGHT))
             ))
-        self.wait(.25)
+        self.pause()
         
         self.play(AnimationGroup(
             FadeIn(algo[5]),
             FadeIn(algo[6])
             ))
-        self.wait(.25)
+        self.pause()
 
         graph.invert_path("C", "D", "E", "F")
         
@@ -1422,12 +1476,12 @@ class AugmentAlgorithmExample(Scene):
             graph.points["C"].animate.set_fill(WHITE),
             *graph.update_matching()
             ))
-        self.wait(.25)
+        self.pause()
         
         self.play(AnimationGroup(
             *(FadeOut(p) for p in [p1, p2, p3])
             ))
-        self.wait(.25)
+        self.pause()
 
         graph.unmatch("A", "B")
         graph.unmatch("C", "D")
@@ -1440,11 +1494,10 @@ class AugmentAlgorithmExample(Scene):
         self.play(AnimationGroup(
             *graph.update_matching()
             ))
-        self.wait(.25)
-
+        self.pause()
 
         
-class AugmentAlgorithmCounterexample(Scene):
+class AugmentAlgorithmCounterexample(MyScene):
     def construct(self):
         graph = Graph({
             "A": [-2 * sin(2*pi/5),    2 * cos(2*pi/5), 0],
@@ -1464,7 +1517,7 @@ class AugmentAlgorithmCounterexample(Scene):
         graph.match("D", "E")
         graph.draw_points(self)
         graph.draw_edges(self)
-        self.wait(.25)
+        self.pause()
         p1_points = [ "A", "B", "C", "D", "E", "F" ]
         p1 = [graph.highlight_path(p1_points[i], p1_points[i + 1]) for i in range(5)]
         directions = {
@@ -1481,7 +1534,7 @@ class AugmentAlgorithmCounterexample(Scene):
             graph.points["A"].animate.set_fill(YELLOW)
             ))
         self.play(Write(count))
-        self.wait(.25)
+        self.pause()
         for i, p in enumerate(p1):
             move_to = p1_points[i + 1]
             self.play(AnimationGroup(
@@ -1492,7 +1545,7 @@ class AugmentAlgorithmCounterexample(Scene):
                         ).next_to(graph.points[move_to],
                             directions[move_to]))
                 ))
-            self.wait(.25)
+            self.pause()
 
         # self.play(AnimationGroup(
         #     *[graph.points[p].animate.set_fill(BLUE_D) for p in p1_points],
@@ -1501,7 +1554,7 @@ class AugmentAlgorithmCounterexample(Scene):
         # self.play(AnimationGroup(
         #     *[p.animate.set_stroke(BLUE, opacity=0.7, z_index=-1) for p in p1]
         # ))
-        # self.wait(.25)
+        # self.pause()
         # self.play(AnimationGroup(
         #     *[p.animate.set_stroke(YELLOW, opacity=0.5, z_index=-1) for p in p1]
         # ))
@@ -1522,36 +1575,38 @@ class AugmentAlgorithmCounterexample(Scene):
             Create(p2),
             Write(count),
             ))
-        self.wait(.25)
+        self.pause()
         p3 = graph.highlight_path("E", "F")
         self.play(Create(p3))
         self.play(Uncreate(p3))
-        self.wait(.25)
+        self.pause()
         
         p3 = graph.highlight_path("E", "D", "C", "B")
         self.play(AnimationGroup(
             Create(p3),
             Transform(count, Text("4", color=YELLOW).next_to(graph.points["B"], DOWN)),
             ))
-        self.wait(.25)
+        self.pause()
 
         self.play(AnimationGroup(
+            FadeOut(p2),
             FadeOut(p3),
             FadeOut(count),
         ))
+        self.pause()
 
 
-class BipartiteAnimation(Scene):
+class BipartiteAnimation(MyScene):
     def construct(self):
         graph = _make_even_cycle_graph()
         graph.draw_edges(self)
         graph.draw_points(self)
-        self.wait(.25)
+        self.pause()
         y = 2
         x = -1
         dx = 1.8
         dy = sqrt(4 - dx ** 2)
-        self.play(graph.rearange({
+        self.play(graph.rearrange({
             "A": [x+dx, y-0*dy, 0],
             "B": [x   , y-1*dy, 0],
             "C": [x+dx, y-2*dy, 0],
@@ -1559,10 +1614,37 @@ class BipartiteAnimation(Scene):
             "E": [x+dx, y-3.5*dy, 0],
             "F": [x   , y-3.5*dy, 0],
         }))
-        self.wait(.25)
+        self.pause()
+
+        self.play(
+            graph.rearrange({
+                "A": ORIGIN,
+                "B": ORIGIN,
+                "C": ORIGIN,
+                "D": ORIGIN,
+                "E": ORIGIN,
+                "F": ORIGIN,
+            })
+        )
+        self.play(FadeOut(graph.get_group()))
+        self.pause()
+
+        text = VGroup(*[Tex(x) for x in [
+            r"Augmenting path matching on a bipartite graph $G=(V, E)$\\",
+            r"|V|=n, |E|=m\\",
+            r"$n/2$ searches\\",
+            r"Each DFS is $O(m)$\\",
+            r"$O(nm)$\\",
+            r"$O(m\sqrt{n})$\\",
+        ]]).arrange(DOWN, buff=.3)
+        for line in text:
+            self.play(FadeIn(line))
+            self.pause()
+        self.play(FadeOut(text))
+        self.pause()
 
 
-class Blossom(Scene):
+class Blossom(MyScene):
     def construct(self):
         graph_points = {
             "A": np.array([-2 * sin(2*pi/5),    2 * cos(2*pi/5), 0]),
@@ -1570,7 +1652,7 @@ class Blossom(Scene):
             "C": np.array([ 2 * sin(2*pi/5),    2 * cos(2*pi/5), 0]),
             "D": np.array([ 2 * sin(4*pi/5),   -2 * cos(  pi/5), 0]),
             "E": np.array([-2 * sin(4*pi/5),   -2 * cos(  pi/5), 0]),
-            "F": np.array([-2 * sin(4*pi/5)-2, -2 * cos(  pi/5), 0]),
+            # "F": np.array([-2 * sin(4*pi/5)-2, -2 * cos(  pi/5), 0]),
         }
         graph = Graph(graph_points)
         graph.add_edge("A", "B")
@@ -1578,27 +1660,27 @@ class Blossom(Scene):
         graph.add_edge("C", "D")
         graph.add_edge("D", "E")
         graph.add_edge("E", "A")
-        graph.add_edge("E", "F")
+        # graph.add_edge("E", "F")
         graph.match("B", "C")
         graph.match("D", "E")
         graph.draw_points(self)
         graph.draw_edges(self)
-        self.wait(.25)
+        self.pause()
 
-        self.play(AnimationGroup(
-            FadeOut(graph.points["F"]),
-            FadeOut(graph.lines[("E","F")])
-            ))
-        self.wait(.25)
+        # self.play(AnimationGroup(
+        #     FadeOut(graph.points["F"]),
+        #     FadeOut(graph.lines[("E","F")])
+        #     ))
+        self.pause()
         graph_abcde = graph.get_sub_group(["A", "B", "C", "D", "E"])
         self.play(Indicate(graph_abcde))
-        self.wait(.25)
+        self.pause()
         blossom = Tex(r"Blossom\\", r"$2k+1$").to_edge(UP)
         
         self.play(Write(blossom[0])),
         self.play(Write(blossom[1])),
         
-        self.wait(.25)
+        self.pause()
         l1 = graph.get_sub_group(["B", "C"])
         l2 = graph.get_sub_group(["D", "E"])
         self.play(LaggedStart(
@@ -1606,10 +1688,10 @@ class Blossom(Scene):
             Indicate(l2),
             lag_ratio=0.2
         ))
-        self.wait(.25)
+        self.pause()
         k_2 = MathTex("k=2").to_edge(DOWN, buff=1)
         self.play(Write(k_2))
-        self.wait(.25)
+        self.pause()
 
         aa = graph_points["A"] + np.array([-1, 0, 0])
         cc = graph_points["C"] + np.array([ 1, 0, 0])
@@ -1629,7 +1711,7 @@ class Blossom(Scene):
             graph.points["A"].animate.set_fill(color=YELLOW),
             lag_ratio=.4
             ))
-        self.wait(.25)
+        self.pause()
 
         a = graph_points["A"]
         b = graph_points["B"]
@@ -1645,7 +1727,7 @@ class Blossom(Scene):
             lag_ratio=.2
             ))
             
-        self.wait(.25)
+        self.pause()
         self.play(LaggedStart(
             FocusOn(graph_points["D"]),
             graph.points["D"].animate.set_fill(color=YELLOW),
@@ -1653,63 +1735,130 @@ class Blossom(Scene):
             FadeOut(VGroup(choice_a, choice_b)),
             lag_ratio=.4
             ))
-        self.wait(.25)
+        self.pause()
 
         choice_a = ArcBetweenPoints(start=a, end=d, radius=2, stroke_color=YELLOW)
         choice_b = Arc(start_angle=(PI/2 + 2*PI/5), angle=-(3 * 2*PI / 5), radius=2, stroke_color=YELLOW)
         self.play(Create(choice_a))
-        self.wait(.25)
+        self.pause()
         out = Arrow(dd_edge.get_start() + .7 * RIGHT, dd_edge.get_end() + .7 * RIGHT, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=0)
         self.play(GrowArrow(out))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             Create(choice_b),
             FadeOut(choice_a)
             ))
-        self.wait(.25)
+        self.pause()
+        self.play(AnimationGroup(
+            Indicate(dd_edge),
+            Indicate(graph.lines[("C", "D")]),
+        ))
+        self.pause()
         self.play(FadeOut(out))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             FadeOut(choice_b),
             graph.points["A"].animate.set_fill(color=WHITE),
             graph.points["D"].animate.set_fill(color=WHITE),
             FadeOut(dd_edge),
             ))
-        self.wait(.25)
+        self.pause()
             
 
         self.play(AnimationGroup(
             *[FadeIn(e) for e in [aa_edge, cc_edge, dd_edge, ee_edge]]
         ))
-        self.wait(.25)
+        self.pause()
 
         aa_solid = graph.ConnectedEdge(graph_points["A"], aa)
         self.play(AnimationGroup(
             Create(aa_solid),
             FadeOut(aa_edge)
             ))
-        self.wait(.25)
+        self.pause()
 
         origin = [0, 0, 0]
         self.play(AnimationGroup(
             *[graph.points[p].animate.move_to(origin) for p in ["A", "B", "C", "D", "E"]],
-            *[graph.lines[e].animate.put_start_and_end_on(origin, origin) for e in [
+            *[graph.lines[e].animate.put_start_and_end_on(origin, origin + UP*0.0001) for e in [
                 ("A", "B"),
                 ("B", "C"),
                 ("C", "D"),
                 ("D", "E"),
                 ("A", "E")]],
             ))
-        self.wait(.25)
+        self.pause()
         self.play(AnimationGroup(
             # *[l.animate.put_start_and_end_on(origin, l.get_end()) for l in [aa_solid, cc_edge, dd_edge, ee_edge]]
             Transform(aa_solid, graph.ConnectedEdge(origin, aa_solid.get_end())),
             *[Transform(l, graph.UnconnectedEdge(origin, l.get_end())) for l in [cc_edge, dd_edge, ee_edge]]
             ))
-        self.wait(.25)
+        self.pause()
+
+        self.play(AnimationGroup(
+            FadeOut(blossom),
+            FadeOut(k_2),
+        ))
+        self.pause()
+
         aa_edge = graph.UnconnectedEdge(origin, aa_solid.get_end())
         self.play(AnimationGroup(
             ShrinkToCenter(aa_solid),
             FadeIn(aa_edge),
         ))
-        self.wait(.25)
+        self.pause()
+        
+        cc_solid = graph.ConnectedEdge(cc_edge.get_start(), cc)
+        self.play(AnimationGroup(
+            GrowFromCenter(cc_solid),
+            FadeOut(cc_edge)
+            ))
+        self.pause()
+        self.play(AnimationGroup(
+            ShrinkToCenter(cc_solid),
+            FadeIn(cc_edge)
+            ))
+        self.pause()
+        
+        dd_solid = graph.ConnectedEdge(dd_edge.get_start(), dd)
+        self.play(AnimationGroup(
+            GrowFromCenter(dd_solid),
+            FadeOut(dd_edge)
+            ))
+        self.pause()
+        # self.play(AnimationGroup(
+        #     ShrinkToCenter(dd_solid),
+        #     FadeIn(dd_edge)
+        #     ))
+        # self.pause()
+
+        # aa_solid = graph.ConnectedEdge(aa_edge.get_start(), aa)
+        # self.play(AnimationGroup(
+        #     GrowFromCenter(aa_solid),
+        #     FadeOut(aa_edge)
+        #     ))
+        # self.pause()
+
+        # del graph.points["F"]
+        # del graph.lines[("E", "F")]
+        # graph.edges.remove(("E", "F"))
+
+        aux_edges = [
+            ("A", aa_edge),
+            ("C", cc_edge),
+            # ("D", dd_edge),
+            ("E", ee_edge),
+        ]
+        solid_aux_edges = [
+            # ("A", aa_solid),
+            ("D", dd_solid),
+        ]
+        self.play(AnimationGroup(
+            graph.rearrange(graph_points),
+            *[Transform(edge, graph.UnconnectedEdge(graph_points[vertex], edge.get_end())) for vertex, edge in aux_edges],
+            *[Transform(edge, graph.ConnectedEdge(graph_points[vertex], edge.get_end())) for vertex, edge in solid_aux_edges]
+        ))
+        self.pause()
+        #self.play(VGroup(*graph.lines.values()).animate.rotate(2 * 2 * PI / 5, about_point=ORIGIN))
+        self.play(Rotate(VGroup(*graph.lines.values()), 2 * 2 * PI / 5, about_point=ORIGIN))
+        self.pause()

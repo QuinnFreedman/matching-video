@@ -1,4 +1,5 @@
 media/
+presentation/
 *.log
 *.dvi
 __pycache__/
