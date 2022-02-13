@@ -1,4 +1,5 @@
-from this import s
+from asyncio import shield
+from calendar import c
 from manim import *
 from manim.animation.animation import DEFAULT_ANIMATION_RUN_TIME
 from manim.mobject.opengl_compatibility import ConvertToOpenGL
@@ -6,7 +7,6 @@ from manim_presentation import Slide #as MyScene
 from typing import Callable, Iterable, Optional, Sequence
 from math import sin, cos, pi, sqrt
 
-from numpy import left_shift
 
 # class MyScene(Slide):
 #     def __init__(self, *args, **kwargs):
@@ -96,7 +96,13 @@ class Graph:
             l.put_start_and_end_on(l.get_start() + delta, l.get_end() + delta)
 
     def add_edge(self, p1, p2):
-        self.edges.add(tuple(sorted((p1, p2))))
+        edge = tuple(sorted((p1, p2)))
+        self.edges.add(edge)
+        line = self._make_edge(edge)
+        self.lines[edge] = line
+
+    def add_point(self, label, p, hidden=False):
+        self.points[label] = Dot(p, radius=0 if hidden else .15*self.scale)
 
     def UnconnectedEdge(self, p1, p2):
             return DashedLine(p1, p2, stroke_width=10*self.scale, dash_length=0.1*self.scale, dashed_ratio=0.4, stroke_color=self.dashed_color)
@@ -113,16 +119,13 @@ class Graph:
             return self.UnconnectedEdge(p1, p2)
         
     def make_edges(self):
-        self.lines = {}
-        for edge in self.edges:
-            line = self._make_edge(edge)
-            self.lines[edge] = line
+        pass
 
     def draw_edges(self, scene):
         if not self.lines:
             self.make_edges()
-        for line in self.lines:
-            scene.add(line)
+        for edge in self.edges:
+            scene.add(self.lines[edge])
 
     def match(self, p1, p2):
         self.matching.add(tuple(sorted((p1, p2))))
@@ -130,26 +133,26 @@ class Graph:
     def unmatch(self, p1, p2):
         self.matching.remove(tuple(sorted((p1, p2))))
 
-    def update_matching(self):
+    def update_matching(self, animated=True):
         animations = []
         for edge in self.edges:
             old_line = self.lines[edge]
-            self._make_edge(edge)
             new_line = self._make_edge(edge)
             if old_line.__class__.__name__ != new_line.__class__.__name__:
                 self.lines[edge] = new_line
-                if isinstance(new_line, DashedLine):
-                    animations.append(AnimationGroup(
-                        FadeIn(new_line, time=0),
-                        ShrinkToCenter(old_line),
-                    ))
-                else:
-                    animations.append(AnimationGroup(
-                        GrowFromCenter(new_line),
-                        FadeOut(old_line, time=0),
-                    ))
+                if animated:
+                    if isinstance(new_line, DashedLine):
+                        animations.append(AnimationGroup(
+                            FadeIn(new_line, time=0),
+                            ShrinkToCenter(old_line),
+                        ))
+                    else:
+                        animations.append(AnimationGroup(
+                            GrowFromCenter(new_line),
+                            FadeOut(old_line, time=0),
+                        ))
 
-        return animations
+        return animations if animated else None
 
     def rearrange(self, new_points):
         return AnimationGroup(
@@ -1644,7 +1647,213 @@ class BipartiteAnimation(MyScene):
         self.pause()
 
 
-class Blossom(MyScene):
+class BlossomDefinition(MyScene):
+    def construct(self):
+        graph_points = {
+            "A": np.array([-2,                0,               0]),
+            "B": np.array([-2 * cos(2*pi/5),  2 * sin(2*pi/5), 0]),
+            "C": np.array([ 2 * cos(  pi/5),  2 * sin(4*pi/5), 0]),
+            "D": np.array([ 2 * cos(  pi/5), -2 * sin(4*pi/5), 0]),
+            "E": np.array([-2 * cos(2*pi/5), -2 * sin(2*pi/5), 0]),
+            "F": np.array([-4              ,  0              , 0]),
+            "G": np.array([-6              ,  0              , 0]),
+            "H": np.array([-6              , -2              , 0]),
+            "I": np.array([-4              , -2              , 0]),
+        }
+        shift = RIGHT * 3 + DOWN * .5
+        graph_points = dict((k, v + shift) for (k, v) in graph_points.items())
+        graph = Graph(graph_points)
+        graph.add_edge("A", "B")
+        graph.add_edge("B", "C")
+        graph.add_edge("C", "D")
+        graph.add_edge("D", "E")
+        graph.add_edge("E", "A")
+        graph.add_edge("A", "F")
+        graph.add_edge("F", "G")
+        graph.add_edge("G", "H")
+        graph.add_edge("H", "I")
+
+        graph_abcde = graph.get_sub_group(["A", "B", "C", "D", "E"])
+        graph_abcde.shift(-shift)
+        self.play(GrowFromCenter(graph_abcde))
+        self.pause()
+
+        blossom = Tex(r"Blossom").to_edge(UP)
+        self.play(Write(blossom))
+        self.pause()
+
+        self.play(graph_abcde.animate.shift(shift))
+        self.pause()
+
+        definition = VGroup(*[Tex(x) for x in [
+            r"$\bullet$ Cycle of size $2k+1$\\",
+            r"$\bullet$ $k$ internally matched edges\\",
+            r"$\bullet$ A stem"
+            ]]).arrange(DOWN, aligned_edge=LEFT).next_to(blossom, DOWN, buff=.75).to_edge(LEFT)
+        self.play(Write(definition[0]))
+        self.pause()
+
+        k_2 = MathTex("k=2").move_to(shift)
+        self.play(Write(k_2))
+        self.pause()
+
+        graph.match("B", "C")
+        graph.match("D", "E")
+        self.play(AnimationGroup(*graph.update_matching()))
+        self.pause()
+        
+        self.play(Write(definition[1]))
+        self.pause()
+        
+        l1 = graph.get_sub_group(["B", "C"])
+        l2 = graph.get_sub_group(["D", "E"])
+        self.play(LaggedStart(
+            Indicate(l1),
+            Indicate(l2),
+            lag_ratio=0.2
+        ))
+        self.pause()
+
+        self.play(FadeOut(k_2))
+        self.pause()
+
+        ee = ((graph_points["E"] - shift) * 1.4) + shift
+        graph.add_point("ee", ee, hidden=True)
+        graph.add_edge("ee", "E")
+        self.play(FadeIn(graph.lines[("E", "ee")]))
+        self.pause()
+
+        arc_margin = 2*PI/40
+        arc_a = Arc(start_angle=PI - arc_margin, angle=2*arc_margin - (4 * 2*PI / 5), radius=2.5, stroke_color=YELLOW).shift(shift)
+        arc_b = Arc(start_angle=PI + arc_margin, angle=-2*arc_margin + (1 * 2*PI / 5), radius=2.5, stroke_color=YELLOW).shift(shift)
+        aa = ((graph_points["A"] - shift) * 1.4) + shift
+        ee_line = graph.lines[("E", "ee")]
+        out_delta_a = arc_a.get_end() - ee_line.get_start()
+        out_line_a = Arrow(
+            ee_line.get_start() + out_delta_a,
+            ee_line.get_end() + out_delta_a,
+            max_stroke_width_to_length_ratio=999,
+            max_tip_length_to_length_ratio=.3,
+            buff=0, color=YELLOW)
+        in_delta_a = arc_a.get_start() - graph_points["A"]
+        in_line_a = Line(aa + in_delta_a, graph_points["A"] + in_delta_a).set_stroke(color=YELLOW)
+
+        out_delta_b = arc_b.get_end() - ee_line.get_start()
+        out_line_b = Arrow(
+            ee_line.get_start() + out_delta_b,
+            ee_line.get_end() + out_delta_b,
+            max_stroke_width_to_length_ratio=999,
+            max_tip_length_to_length_ratio=.3,
+            buff=0, color=YELLOW)
+        in_delta_b = arc_b.get_start() - graph_points["A"]
+        in_line_b = Line(aa + in_delta_b, graph_points["A"] + in_delta_b, color=YELLOW)
+        
+        self.play(LaggedStart(
+            Create(VGroup(in_line_a, arc_a, out_line_a)),
+            Create(VGroup(in_line_b, arc_b, out_line_b)),
+            lag_ratio=.3
+        ))
+        self.pause()
+        
+        self.play(AnimationGroup(
+            FadeOut(VGroup(in_line_a, arc_a, out_line_a)),
+            FadeOut(VGroup(in_line_b, arc_b, out_line_b)),
+        ))
+        self.pause()
+
+        a = graph_points["A"]
+        b = graph_points["B"]
+        e = graph_points["E"]
+        ab = b - a
+        ae = e - a
+        choice_a = Arrow(a - .2 * ae, a - .2 * ae + .6 * ab, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=.1)
+        choice_b = Arrow(a - .2 * ab, a - .2 * ab + .6 * ae, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=.1)
+        self.play(LaggedStart(
+            LaggedStart(
+                FocusOn(graph.points["A"]),
+                graph.points["A"].animate.set_fill(color=YELLOW),
+                lag_ratio=.4
+            ),
+            LaggedStart(
+                GrowArrow(choice_a),
+                GrowArrow(choice_b),
+                lag_ratio=.2
+            ),
+            lag_ratio=0.6
+            ))
+        self.pause()
+
+        graph.points["A"].set_z_index(9999)
+        
+        root = Tex("root", color=YELLOW)
+        root.next_to(graph.points["A"], RIGHT, buff=0.4)
+        self.play(Write(root))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FadeOut(choice_a),
+            FadeOut(choice_b),
+        ))
+        self.pause()
+        
+        graph.match("A", "F")
+        graph.update_matching(animated=False)
+        self.play(LaggedStart(
+            GrowFromPoint(graph.lines[("A", "F")], graph_points["A"]),
+            GrowFromCenter(graph.points["F"]),
+            lag_ratio=.3
+            ))
+        self.pause()
+
+        self.play(Indicate(graph.points["A"]))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FadeOut(graph.lines[("A", "F")]),
+            FadeOut(graph.points["F"]),
+            FadeOut(graph.lines[("E", "ee")])
+        ))
+        self.pause()
+
+        stem_text = Tex("stem", color=BLUE).next_to(graph_points["F"], UP, buff=.4)
+        self.play(LaggedStart(
+            GrowFromPoint(graph.lines[("A", "F")], graph_points["A"]),
+            GrowFromCenter(graph.points["F"]),
+            GrowFromPoint(graph.lines[("F", "G")], graph_points["F"]),
+            GrowFromCenter(graph.points["G"]),
+            Write(stem_text),
+            lag_ratio=.3
+            ))
+        self.pause()
+
+        stem_hl = graph.highlight_path("A", "F", "G").set_stroke(color=BLUE)
+        self.play(ShowPassingFlash(stem_hl, time_width=1, time=1.5))
+        self.pause()
+
+        self.play(Transform(stem_text.copy(), definition[2]))
+        self.pause()
+
+        graph.match("G", "H")
+        graph.update_matching(animated=False)
+        self.play(AnimationGroup(
+            FadeIn(graph.get_sub_group(["H", "I"])),
+            FadeIn(graph.lines[("G", "H")]),
+        ))
+        self.pause()
+        self.play(AnimationGroup(
+            FadeOut(graph.get_sub_group(["F", "G", "H", "I"])),
+            FadeOut(graph.lines[("A", "F")]),
+            FadeOut(stem_text)
+        ))
+        self.pause()
+        self.play(AnimationGroup(
+            FadeIn(graph.points["F"]),
+            FadeIn(graph.lines[("A", "F")]),
+        ))
+        self.pause()
+
+
+class BlossomShrinkingProof(MyScene):
     def construct(self):
         graph_points = {
             "A": np.array([-2 * sin(2*pi/5),    2 * cos(2*pi/5), 0]),
@@ -1660,205 +1869,127 @@ class Blossom(MyScene):
         graph.add_edge("C", "D")
         graph.add_edge("D", "E")
         graph.add_edge("E", "A")
-        # graph.add_edge("E", "F")
         graph.match("B", "C")
         graph.match("D", "E")
-        graph.draw_points(self)
-        graph.draw_edges(self)
-        self.pause()
+        graph.make_edges()
+        g = graph.get_group()
+        # self.play(FadeIn(g))
 
-        # self.play(AnimationGroup(
-        #     FadeOut(graph.points["F"]),
-        #     FadeOut(graph.lines[("E","F")])
-        #     ))
-        self.pause()
-        graph_abcde = graph.get_sub_group(["A", "B", "C", "D", "E"])
-        self.play(Indicate(graph_abcde))
-        self.pause()
-        blossom = Tex(r"Blossom\\", r"$2k+1$").to_edge(UP)
-        
-        self.play(Write(blossom[0])),
-        self.play(Write(blossom[1])),
-        
-        self.pause()
-        l1 = graph.get_sub_group(["B", "C"])
-        l2 = graph.get_sub_group(["D", "E"])
-        self.play(LaggedStart(
-            Indicate(l1),
-            Indicate(l2),
-            lag_ratio=0.2
-        ))
-        self.pause()
-        k_2 = MathTex("k=2").to_edge(DOWN, buff=1)
-        self.play(Write(k_2))
-        self.pause()
-
-        aa = graph_points["A"] + np.array([-1, 0, 0])
-        cc = graph_points["C"] + np.array([ 1, 0, 0])
-        dd = graph_points["D"] + (graph_points["C"] - graph_points["B"]) / 2
-        ee = graph_points["E"] + (graph_points["A"] - graph_points["B"]) / 2
-
-        aa_edge = graph.UnconnectedEdge(graph_points["A"], aa)
-        cc_edge = graph.UnconnectedEdge(graph_points["C"], cc)
-        dd_edge = graph.UnconnectedEdge(graph_points["D"], dd)
-        ee_edge = graph.UnconnectedEdge(graph_points["E"], ee)
-
-        for p in graph.points.values():
-            p.set_z_index(10)
-
-        self.play(LaggedStart(
-            FocusOn(graph_points["A"]),
-            graph.points["A"].animate.set_fill(color=YELLOW),
-            lag_ratio=.4
-            ))
-        self.pause()
-
-        a = graph_points["A"]
-        b = graph_points["B"]
-        d = graph_points["D"]
-        e = graph_points["E"]
-        ab = b - a
-        ae = e - a
-        choice_a = Arrow(a - .2 * ae, a - .2 * ae + .6 * ab, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=.1)
-        choice_b = Arrow(a - .2 * ab, a - .2 * ab + .6 * ae, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=.1)
-        self.play(LaggedStart(
-            GrowArrow(choice_a),
-            GrowArrow(choice_b),
-            lag_ratio=.2
-            ))
-            
-        self.pause()
-        self.play(LaggedStart(
-            FocusOn(graph_points["D"]),
-            graph.points["D"].animate.set_fill(color=YELLOW),
-            FadeIn(dd_edge),
-            FadeOut(VGroup(choice_a, choice_b)),
-            lag_ratio=.4
-            ))
-        self.pause()
-
-        choice_a = ArcBetweenPoints(start=a, end=d, radius=2, stroke_color=YELLOW)
-        choice_b = Arc(start_angle=(PI/2 + 2*PI/5), angle=-(3 * 2*PI / 5), radius=2, stroke_color=YELLOW)
-        self.play(Create(choice_a))
-        self.pause()
-        out = Arrow(dd_edge.get_start() + .7 * RIGHT, dd_edge.get_end() + .7 * RIGHT, max_tip_length_to_length_ratio=.3, max_stroke_width_to_length_ratio=5, color=YELLOW, stroke_width=5, buff=0)
-        self.play(GrowArrow(out))
-        self.pause()
-        self.play(AnimationGroup(
-            Create(choice_b),
-            FadeOut(choice_a)
-            ))
-        self.pause()
-        self.play(AnimationGroup(
-            Indicate(dd_edge),
-            Indicate(graph.lines[("C", "D")]),
-        ))
-        self.pause()
-        self.play(FadeOut(out))
-        self.pause()
-        self.play(AnimationGroup(
-            FadeOut(choice_b),
-            graph.points["A"].animate.set_fill(color=WHITE),
-            graph.points["D"].animate.set_fill(color=WHITE),
-            FadeOut(dd_edge),
-            ))
-        self.pause()
-            
-
-        self.play(AnimationGroup(
-            *[FadeIn(e) for e in [aa_edge, cc_edge, dd_edge, ee_edge]]
-        ))
-        self.pause()
-
-        aa_solid = graph.ConnectedEdge(graph_points["A"], aa)
-        self.play(AnimationGroup(
-            Create(aa_solid),
-            FadeOut(aa_edge)
-            ))
-        self.pause()
-
-        origin = [0, 0, 0]
-        self.play(AnimationGroup(
-            *[graph.points[p].animate.move_to(origin) for p in ["A", "B", "C", "D", "E"]],
-            *[graph.lines[e].animate.put_start_and_end_on(origin, origin + UP*0.0001) for e in [
-                ("A", "B"),
-                ("B", "C"),
-                ("C", "D"),
-                ("D", "E"),
-                ("A", "E")]],
-            ))
-        self.pause()
-        self.play(AnimationGroup(
-            # *[l.animate.put_start_and_end_on(origin, l.get_end()) for l in [aa_solid, cc_edge, dd_edge, ee_edge]]
-            Transform(aa_solid, graph.ConnectedEdge(origin, aa_solid.get_end())),
-            *[Transform(l, graph.UnconnectedEdge(origin, l.get_end())) for l in [cc_edge, dd_edge, ee_edge]]
-            ))
-        self.pause()
-
-        self.play(AnimationGroup(
-            FadeOut(blossom),
-            FadeOut(k_2),
-        ))
-        self.pause()
-
-        aa_edge = graph.UnconnectedEdge(origin, aa_solid.get_end())
-        self.play(AnimationGroup(
-            ShrinkToCenter(aa_solid),
-            FadeIn(aa_edge),
-        ))
-        self.pause()
-        
-        cc_solid = graph.ConnectedEdge(cc_edge.get_start(), cc)
-        self.play(AnimationGroup(
-            GrowFromCenter(cc_solid),
-            FadeOut(cc_edge)
-            ))
-        self.pause()
-        self.play(AnimationGroup(
-            ShrinkToCenter(cc_solid),
-            FadeIn(cc_edge)
-            ))
-        self.pause()
-        
-        dd_solid = graph.ConnectedEdge(dd_edge.get_start(), dd)
-        self.play(AnimationGroup(
-            GrowFromCenter(dd_solid),
-            FadeOut(dd_edge)
-            ))
-        self.pause()
-        # self.play(AnimationGroup(
-        #     ShrinkToCenter(dd_solid),
-        #     FadeIn(dd_edge)
-        #     ))
-        # self.pause()
-
-        # aa_solid = graph.ConnectedEdge(aa_edge.get_start(), aa)
-        # self.play(AnimationGroup(
-        #     GrowFromCenter(aa_solid),
-        #     FadeOut(aa_edge)
-        #     ))
-        # self.pause()
-
-        # del graph.points["F"]
-        # del graph.lines[("E", "F")]
-        # graph.edges.remove(("E", "F"))
-
-        aux_edges = [
-            ("A", aa_edge),
-            ("C", cc_edge),
-            # ("D", dd_edge),
-            ("E", ee_edge),
+        proof_lines = [
+            (0, r"Contract blossom $B \rightarrow$ vertex $B'$ to transform $M \rightarrow M'$ ($|M|>|M'|$)"),
+            (0, r"$M'$ is maximum $\implies{}$ $M$ is maximum"),
+            (0, r"By contradiction: assume $M'$ is maximum but $M$ isn't."),
+            (0, r"$\implies{}$ There must be some augmenting path $P$ w.r.t. $M$"),
+            (0, r"3 cases:"),
+            (1, r"1. $P$ doesn't intersect $B$"),
+            (2, r"$P$ must also exist in $M'$. $M'$ is not maximum"),
+            (1, r"2. $P$ has an endpoint in $B$"),
+            (2, r"A.P. must end on an unmatched vertex"),
+            (2, r"A blossom has either $0$ or $1$ unmatched vertices"),
+            (2, r"If $P$ ends in $B$, $B$ has 1 unmatched vertex"),
+            (2, r"Let $(u,v) \in P : u \in B, v \not\in B$"),
+            (2, r"$(u,v)$ must be unmatched ($\nexists$ matches $B \leftrightarrow  M$)"),
+            (2, r"Construct A.P. w.r.t $M'$ with all of $P$ up to $v$, plus $(v, B’)$"),
+            (2, r"$M'$ is not maximum"),
+            (1, r"3. $P$ passes through $B$"),
+            (2, r"Let $(u_1, v_1), (u_2, v_2) \in P : u_1, u_2 \in B, v_1, v_2 \not\in B$"),
+            (2, r"3 cases:"),
+            (3, r"$1$. $(u_1, v_1), (u_2, v_2) \in M$"),
+            (4, r"Not possible ($B$ has $\le1$ unmatched vertex)"),
+            (3, r"$2$. $(u_1, v_1) \in M, (u_2, v_2) \not\in M$"),
+            (4, r"Create an A.P. w.r.t. M' by contracting $u_1 = u_2 = B'$"),
+            (4, r"New path is $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B' \rightarrow v_2 \rightarrow (P\textrm{ from }v_2)$"),
+            (3, r"$1$. $(u_1, v_1), (u_2, v_2) \not\in M$"),
+            (4, r"If the root of $B$ is unmatched"),
+            (5, r"Then $B'$ is unmatched"),
+            (5, r"Construct a new A.P. with $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B'$"),
+            (4, r"If the root of $B$ is matched"),
+            (5, r"$B'$ is matched with the stem of $P$ (which must end in an unmatched vertex)"),
+            (5, r"Construct a new A.P. with $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B' \rightarrow \textrm{stem}(B)$"),
         ]
-        solid_aux_edges = [
-            # ("A", aa_solid),
-            ("D", dd_solid),
-        ]
+
+        proof = VGroup(*[Tex(tex, font_size=12) for (_, tex) in proof_lines]).arrange(DOWN, aligned_edge=LEFT).to_edge(DOWN)
+        for i, (offset, _) in enumerate(proof_lines):
+            proof[i].shift([offset/2, 0, 0])
+        
+        self.add(proof)
+        # self.wait()
+
+        # for x in proof:
+        #     self.play(Write(x))
+        #     self.pause()
+
+
+class LinearProgrammingIntro(Slide):
+    def construct(self):
+        optimize = Tex("Optimize:")
+        function = MathTex(r"f(x,y)=180x+200y")
+        subject_to = Tex("Subject to constraints:")
+        constraint_tex = MathTex(
+            r"5x+4y & \le 80\\",
+            r"10x+20y & \le 200\\",
+            r"x & \ge 0\\",
+            r"y & \ge 0\\",
+        )
+        spacer = Rectangle(width=0, height=.5).set_stroke(color=None, width=0).set_fill(color=None)
+        g = VGroup(optimize, function, spacer, subject_to, constraint_tex).arrange(DOWN, buff=.3)
+        optimize.shift(LEFT * 3)
+        subject_to.align_to(optimize, LEFT)
         self.play(AnimationGroup(
-            graph.rearrange(graph_points),
-            *[Transform(edge, graph.UnconnectedEdge(graph_points[vertex], edge.get_end())) for vertex, edge in aux_edges],
-            *[Transform(edge, graph.ConnectedEdge(graph_points[vertex], edge.get_end())) for vertex, edge in solid_aux_edges]
+            FadeIn(optimize),
+            FadeIn(function),
         ))
         self.pause()
-        #self.play(VGroup(*graph.lines.values()).animate.rotate(2 * 2 * PI / 5, about_point=ORIGIN))
-        self.play(Rotate(VGroup(*graph.lines.values()), 2 * 2 * PI / 5, about_point=ORIGIN))
+        self.play(Transform(
+            optimize, Tex("Maximize:").move_to(optimize, aligned_edge=LEFT)
+        ))
         self.pause()
+        self.play(LaggedStart(
+            FadeIn(subject_to),
+            *[FadeIn(x) for x in constraint_tex],
+            lag_ratio=.6
+        ))
+        self.pause()
+        self.play(FadeOut(g))
+        self.pause()
+
+        title = Tex("Carpenter maximizing proffit")
+        bullets = BulletedList(
+            r"Tables take 10 units of lumber, 5 hours of labor. Make \$180 proffit",
+            r"Bookshelves take 20 units of lumber, 4 hours of labor. Make \$200 proffit",
+            r"200 units of lumber available",
+            r"80 hours of labor available",
+            width=4
+            )
+        
+        word_problem = VGroup(title, bullets).arrange(DOWN, aligned_edge=LEFT)
+        self.play(FadeIn(title))
+        self.pause()
+        for line in bullets:
+            self.play(FadeIn(line))
+            self.pause()
+        
+
+
+
+class Presentation2(Slide):
+    def construct(self):
+        slides = [
+            StableMatching,
+            StableVsMaximumTable,
+            MaximumMatchingIntro,
+            FourProblems,
+            AugmentingPath,
+            MaximumImpliesNoAP,
+            NoAPImpliesMaximum,
+            AugmentAlgorithm,
+            AugmentAlgorithmExample,
+            AugmentAlgorithmCounterexample,
+            BipartiteAnimation,
+            Blossom
+        ]
+
+        for s in slides:
+            s.construct(self)
+            self.clear()
+            self.pause()
