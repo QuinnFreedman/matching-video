@@ -1830,7 +1830,8 @@ class BlossomDefinition(MyScene):
         self.play(ShowPassingFlash(stem_hl, time_width=1, time=1.5))
         self.pause()
 
-        self.play(Transform(stem_text.copy(), definition[2]))
+        stem_text_copy = stem_text.copy()
+        self.play(Transform(stem_text_copy, definition[2]))
         self.pause()
 
         graph.match("G", "H")
@@ -1849,6 +1850,20 @@ class BlossomDefinition(MyScene):
         self.play(AnimationGroup(
             FadeIn(graph.points["F"]),
             FadeIn(graph.lines[("A", "F")]),
+        ))
+        self.pause()
+        self.play(AnimationGroup(
+            FadeOut(graph.points["F"]),
+            FadeOut(graph.lines[("A", "F")]),
+            graph.points["A"].animate.set_fill(color=WHITE)
+        ))
+        self.pause()
+        self.play(AnimationGroup(
+            FadeOut(blossom),
+            FadeOut(definition),
+            FadeOut(stem_text_copy),
+            FadeOut(root),
+            graph.get_sub_group(["A", "B", "C", "D", "E"]).animate.shift(-shift)
         ))
         self.pause()
 
