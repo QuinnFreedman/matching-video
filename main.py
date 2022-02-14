@@ -154,10 +154,19 @@ class Graph:
 
         return animations if animated else None
 
-    def rearrange(self, new_points):
+    def rearrange(self, new_points, dont_stretch={}):
+        dont_stretch = set(tuple(sorted(x)) for x in dont_stretch)
+        edges = [edge for edge in self.edges if edge[0] in new_points or edge[1] in new_points]
+        new_line_start_ends = [(
+            new_points.get(edge[0], self.lines[edge].get_start()),
+            new_points.get(edge[1], self.lines[edge].get_end()),
+            edge,
+        ) for edge in edges]
         return AnimationGroup(
-            *[dot.animate.move_to(new_points[key]) for key, dot in self.points.items()],
-            *[self.lines[edge].animate.put_start_and_end_on(new_points[edge[0]], new_points[edge[1]]) for edge in self.edges],
+            *[self.points[key].animate.move_to(new_point) for key, new_point in new_points.items()],
+            *[Transform(self.lines[edge], (self.ConnectedEdge if edge in self.matching else self.UnconnectedEdge)(start, end))
+              if edge in dont_stretch else self.lines[edge].animate.put_start_and_end_on(start, end)
+              for (start, end, edge) in new_line_start_ends],
         )
 
     def highlight_path(self, *points):
@@ -1865,6 +1874,101 @@ class BlossomDefinition(MyScene):
             FadeOut(root),
             graph.get_sub_group(["A", "B", "C", "D", "E"]).animate.shift(-shift)
         ))
+        self.pause()
+
+
+class BlossomShrinkingAlgorithm(MyScene):
+    def construct(self):
+        graph_points = {
+            "A": np.array([-2,                0,               0]),
+            "B": np.array([-2 * cos(2*pi/5),  2 * sin(2*pi/5), 0]),
+            "C": np.array([ 2 * cos(  pi/5),  2 * sin(4*pi/5), 0]),
+            "D": np.array([ 2 * cos(  pi/5), -2 * sin(4*pi/5), 0]),
+            "E": np.array([-2 * cos(2*pi/5), -2 * sin(2*pi/5), 0]),
+            "X": np.array([-4,                0,               0]),
+            "Y": np.array([-6,                0,               0]),
+        }
+        graph_points["F"] = graph_points["C"] * 1.8
+        graph_points["G"] = graph_points["D"] * 1.8
+        graph = Graph(graph_points)
+        graph.add_edge("A", "B")
+        graph.add_edge("B", "C")
+        graph.add_edge("C", "D")
+        graph.add_edge("D", "E")
+        graph.add_edge("E", "A")
+        graph.add_edge("A", "X")
+        graph.add_edge("A", "Y")
+        graph.add_edge("C", "F")
+        graph.add_edge("D", "G")
+        graph.match("B", "C")
+        graph.match("D", "E")
+        graph.match("A", "X")
+        graph.update_matching(animated=False)
+        graph.draw_edges(self)
+        graph.draw_points(self)
+        self.pause()
+
+        path = graph.highlight_path("Y", "X", "A", "E", "D", "C", "B")
+        self.play(Create(path))
+        self.pause()
+
+        edge_length = 4 * sin(PI/5)
+        circle = Circle(radius=edge_length).set_stroke(color=YELLOW).set_fill(opacity=0).move_to(graph_points["B"])
+        self.play(GrowFromCenter(circle))
+        self.play(AnimationGroup(
+            FadeOut(circle),
+            Flash(graph.points["A"], flash_radius=.2, line_length=0.3),
+            ))
+        self.pause()
+
+        def hl(*points):
+            return Path(*points).set_stroke(color=YELLOW, width=30, opacity=0.5).set_z_index(-1)
+
+        stem_hl = hl(graph_points["Y"], ORIGIN)
+
+        self.play(AnimationGroup(
+            Transform(path, stem_hl),
+            graph.rearrange({
+                "A": graph_points["A"] * 0.0001,
+                "B": graph_points["B"] * 0.0001,
+                "C": graph_points["C"] * 0.0001,
+                "D": graph_points["D"] * 0.0001,
+                "E": graph_points["E"] * 0.0001,
+            },
+            dont_stretch={
+                ("C", "F"),
+                ("D", "G"),
+            })
+        ))
+        self.pause()
+        
+        path_cf = graph.highlight_path("C", "F")
+        self.play(Create(path_cf))
+        self.pause()
+
+        self.play(AnimationGroup(
+            Transform(path, hl(graph_points["Y"], graph_points["A"])),
+            Transform(path_cf, hl(graph_points["C"], graph_points["F"])),
+            graph.rearrange({
+                "A": graph_points["A"],
+                "B": graph_points["B"],
+                "C": graph_points["C"],
+                "D": graph_points["D"],
+                "E": graph_points["E"],
+            },
+            dont_stretch={
+                ("C", "F"),
+                ("D", "G"),
+            })
+        ))
+        self.pause()
+
+        lifted_path = graph.highlight_path("A", "B", "C")
+        self.play(Create(lifted_path))
+        self.pause()
+        self.play(Transform(lifted_path, graph.highlight_path("A", "E", "D", "C")))
+        self.pause()
+        self.play(Transform(lifted_path, graph.highlight_path("A", "B", "C")))
         self.pause()
 
 
