@@ -1975,24 +1975,43 @@ class BlossomShrinkingAlgorithm(MyScene):
 class BlossomShrinkingProof(MyScene):
     def construct(self):
         graph_points = {
-            "A": np.array([-2 * sin(2*pi/5),    2 * cos(2*pi/5), 0]),
-            "B": np.array([ 0,                  2,               0]),
-            "C": np.array([ 2 * sin(2*pi/5),    2 * cos(2*pi/5), 0]),
-            "D": np.array([ 2 * sin(4*pi/5),   -2 * cos(  pi/5), 0]),
-            "E": np.array([-2 * sin(4*pi/5),   -2 * cos(  pi/5), 0]),
-            # "F": np.array([-2 * sin(4*pi/5)-2, -2 * cos(  pi/5), 0]),
+            "A": np.array([-1,                0,               0]),
+            "B": np.array([-cos(2*pi/5),  sin(2*pi/5), 0]),
+            "C": np.array([ cos(  pi/5),  sin(4*pi/5), 0]),
+            "D": np.array([ cos(  pi/5), -sin(4*pi/5), 0]),
+            "E": np.array([-cos(2*pi/5), -sin(2*pi/5), 0]),
         }
-        graph = Graph(graph_points)
-        graph.add_edge("A", "B")
-        graph.add_edge("B", "C")
-        graph.add_edge("C", "D")
-        graph.add_edge("D", "E")
-        graph.add_edge("E", "A")
-        graph.match("B", "C")
-        graph.match("D", "E")
-        graph.make_edges()
-        g = graph.get_group()
-        # self.play(FadeIn(g))
+        graph_points["X"] = graph_points["A"] * 2
+        graph_points["Y"] = graph_points["C"] * 2
+        graph_points["Z"] = graph_points["D"] * 2
+        graph_points_original = {k:v + RIGHT * 4.5 + UP * 2 for (k, v) in graph_points.items()}
+        graph_original = Graph(graph_points_original, scale=0.8)
+        graph_original.add_edge("A", "B")
+        graph_original.add_edge("B", "C")
+        graph_original.add_edge("C", "D")
+        graph_original.add_edge("D", "E")
+        graph_original.add_edge("E", "A")
+        graph_original.add_edge("A", "X")
+        graph_original.add_edge("C", "Y")
+        graph_original.add_edge("D", "Z")
+        graph_original.match("A", "X")
+        graph_original.match("B", "C")
+        graph_original.match("D", "E")
+        graph_original.update_matching(animated=False)
+        
+        graph_points_contracted = {
+            "X": graph_points["X"],
+            "Y": graph_points["Y"],
+            "Z": graph_points["Z"],
+            "B": ORIGIN,
+        }
+        graph_points_contracted = {k:v + RIGHT * 4.5 + DOWN * 2 for (k, v) in graph_points_contracted.items()}
+        graph_contracted = Graph(graph_points_contracted, scale=0.8)
+        graph_contracted.add_edge("B", "X")
+        graph_contracted.add_edge("B", "Y")
+        graph_contracted.add_edge("B", "Z")
+        graph_contracted.match("B", "X")
+        graph_contracted.update_matching(animated=False)
 
         proof_lines = [
             (0, r"Contract blossom $B \rightarrow$ vertex $B'$ to transform $M \rightarrow M'$ ($|M|>|M'|$)"),
@@ -2027,16 +2046,21 @@ class BlossomShrinkingProof(MyScene):
             (5, r"Construct a new A.P. with $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B' \rightarrow \textrm{stem}(B)$"),
         ]
 
-        proof = VGroup(*[Tex(tex, font_size=12) for (_, tex) in proof_lines]).arrange(DOWN, aligned_edge=LEFT).to_edge(DOWN)
+        proof = VGroup(*[Tex(tex, font_size=28) for (_, tex) in proof_lines]).arrange(DOWN, aligned_edge=LEFT).to_edge(UP).to_edge(LEFT)
         for i, (offset, _) in enumerate(proof_lines):
             proof[i].shift([offset/2, 0, 0])
-        
-        self.add(proof)
-        # self.wait()
 
-        # for x in proof:
-        #     self.play(Write(x))
-        #     self.pause()
+        self.play(Write(proof[0]))
+        self.pause()
+        self.play(GrowFromCenter(graph_original.get_group()))
+        self.pause()
+        self.play(GrowFromCenter(graph_contracted.get_group()))
+        self.pause()
+        
+        for x in proof[1:4]:
+            self.play(Write(x))
+
+        self.pause()
 
 
 class LinearProgrammingIntro(Slide):
