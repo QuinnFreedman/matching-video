@@ -3,7 +3,7 @@ from calendar import c
 from manim import *
 from manim.animation.animation import DEFAULT_ANIMATION_RUN_TIME
 from manim.mobject.opengl_compatibility import ConvertToOpenGL
-from manim_presentation import Slide #as MyScene
+# from manim_presentation import Slide #as MyScene
 from typing import Callable, Iterable, Optional, Sequence
 from math import sin, cos, pi, sqrt
 
@@ -2014,21 +2014,23 @@ class BlossomShrinkingProof(MyScene):
         graph_contracted.update_matching(animated=False)
 
         proof_lines = [
-            (0, r"Contract blossom $B \rightarrow$ vertex $B'$ to transform $M \rightarrow M'$ ($|M|>|M'|$)"),
-            (0, r"$M'$ is maximum $\implies{}$ $M$ is maximum"),
+            (0, [r"Contract blossom ", r"$B$", r" $\rightarrow$ vertex ", r"$B'$", r" to transform ", r"$M$", r" $\rightarrow$ ", r"$M'$", r" ($|M|>|M'|$)"]),
+            (0, [r"$M'$", r" is maximum ", r"$\implies{}$ ", r"$M$", r" is maximum"]),
             (0, r"By contradiction: assume $M'$ is maximum but $M$ isn't."),
             (0, r"$\implies{}$ There must be some augmenting path $P$ w.r.t. $M$"),
             (0, r"3 cases:"),
             (1, r"1. $P$ doesn't intersect $B$"),
-            (2, r"$P$ must also exist in $M'$. $M'$ is not maximum"),
+            (2, r"$P$ must also exist in $M'$"),
+            (2, r"$M'$ is not maximum [contradiction]"),
             (1, r"2. $P$ has an endpoint in $B$"),
             (2, r"A.P. must end on an unmatched vertex"),
             (2, r"A blossom has either $0$ or $1$ unmatched vertices"),
             (2, r"If $P$ ends in $B$, $B$ has 1 unmatched vertex"),
+            (2, r"($B'$ is also unmatched)"),
             (2, r"Let $(u,v) \in P : u \in B, v \not\in B$"),
             (2, r"$(u,v)$ must be unmatched ($\nexists$ matches $B \leftrightarrow  M$)"),
             (2, r"Construct A.P. w.r.t $M'$ with all of $P$ up to $v$, plus $(v, B’)$"),
-            (2, r"$M'$ is not maximum"),
+            (2, r"$M'$ is not maximum [contradiction]"),
             (1, r"3. $P$ passes through $B$"),
             (2, r"Let $(u_1, v_1), (u_2, v_2) \in P : u_1, u_2 \in B, v_1, v_2 \not\in B$"),
             (2, r"3 cases:"),
@@ -2046,24 +2048,240 @@ class BlossomShrinkingProof(MyScene):
             (5, r"Construct a new A.P. with $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B' \rightarrow \textrm{stem}(B)$"),
         ]
 
-        proof = VGroup(*[Tex(tex, font_size=28) for (_, tex) in proof_lines]).arrange(DOWN, aligned_edge=LEFT).to_edge(UP).to_edge(LEFT)
+        proof_font_size = 28
+        proof = VGroup(*[Tex(*([tex] if isinstance(tex, str) else tex), font_size=proof_font_size) for (_, tex) in proof_lines]).arrange(DOWN, aligned_edge=LEFT).to_edge(UP).to_edge(LEFT)
         for i, (offset, _) in enumerate(proof_lines):
             proof[i].shift([offset/2, 0, 0])
 
-        self.play(Write(proof[0]))
+        arrow = MathTex(r"\Rightarrow", font_size=64).move_to(RIGHT * 4.5).rotate(-PI/2)
+
+        self.play(Write(proof[0], time_width=.2))
         self.pause()
         self.play(GrowFromCenter(graph_original.get_group()))
         self.pause()
+        self.play(GrowFromCenter(arrow))
+        self.pause()
         self.play(GrowFromCenter(graph_contracted.get_group()))
         self.pause()
-        
-        for x in proof[1:4]:
-            self.play(Write(x))
 
+        blossom = graph_original.get_sub_group(["A", "B", "C", "D", "E"])
+        self.play(AnimationGroup(
+            Indicate(blossom, color=BLUE, time_width=128),
+            Indicate(proof[0].get_part_by_tex("B"), color=BLUE, time_width=128, scale_factor=1.8),
+            ))
+        self.pause()
+        self.play(AnimationGroup(
+            Indicate(graph_contracted.get_sub_group(["B"]), color=BLUE, scale_factor=1.8, time_width=128),
+            Indicate(proof[0].get_part_by_tex("B'"), color=BLUE, time_width=128, scale_factor=1.8),
+            ))
+        self.pause()
+        
+        m = VGroup(
+            *(graph_original.points[x] for x in ["X", "A", "B", "C", "D", "E"]),
+            *(graph_original.lines[x] for x in graph_original.matching),
+            )
+        self.play(AnimationGroup(
+            Indicate(m, time_width=128),
+            Indicate(proof[0].get_part_by_tex("M"), time_width=128, scale_factor=1.8),
+            ))
+        self.pause()
+        m_prime = VGroup(
+            *(graph_contracted.points[x] for x in ["X", "B"]),
+            *(graph_contracted.lines[x] for x in graph_contracted.matching),
+        )
+        self.play(AnimationGroup(
+            Indicate(m_prime, time_width=128),
+            Indicate(proof[0].get_part_by_tex("M'"), time_width=128, scale_factor=1.8),
+            ))
+        self.pause()
+        
+        self.play(Write(proof[1], time_width=.2))
+        self.pause()
+        
+        self.play(AnimationGroup(
+            Indicate(m_prime, time_width=128),
+            Indicate(proof[1].get_part_by_tex("M'"), time_width=128, scale_factor=1.8),
+            ))
+        self.pause()
+        self.play(AnimationGroup(
+            Indicate(m, time_width=128),
+            Indicate(proof[1].get_part_by_tex("$M$"), time_width=128, scale_factor=1.8),
+            ))
+        self.pause()
+        implies = proof[1].get_part_by_tex(r"\implies{}")
+        self.play(Transform(implies, Tex("$\Longleftrightarrow$ ", font_size=proof_font_size).move_to(implies)))
+        self.pause()
+        self.play(Transform(implies, Tex("$\implies{}$ ", font_size=proof_font_size).move_to(implies)))
+        self.pause()
+        
+        for x in proof[2:6]:
+            self.play(Write(x, time_width=.2))
+
+        def hl(*points):
+            return Path(*points).set_stroke(color=YELLOW, width=30, opacity=0.5).set_z_index(-1)
+
+        path_1_points = [
+            RIGHT * 2.5 + UP * 3,
+            RIGHT * 3.5 + UP * 3.1,
+            RIGHT * 4.5 + UP * 3.7,
+            RIGHT * 5.5 + UP * 3.4,
+            ]
+            
+        path_1 = hl(*path_1_points)
+        path_2 = hl(*[x + DOWN * 4 for x in path_1_points])
+
+        self.play(Create(path_1))
+        self.pause()
+        
+        self.play(Write(proof[6], time_width=.2))
+        self.pause()
+        
+        self.play(Create(path_2))
+        self.pause()
+        
+        self.play(Write(proof[7], time_width=.2))
+        self.pause()
+
+        self.play(AnimationGroup(
+            Transform(VGroup(proof[6], proof[7]), MathTex(r"\checkmark", font_size=proof_font_size, color=YELLOW).next_to(proof[5], RIGHT)),
+            FadeOut(path_1),
+            FadeOut(path_2),
+            ))
+        self.pause()
+
+        line_height = proof[0].get_center()[1] - proof[1].get_center()[1]
+
+        for line in proof[8:]:
+            line.shift(2 * line_height * UP)
+        
+        self.play(Write(proof[8], time_width=.2))
+        self.pause()
+
+        path_1 = graph_original.highlight_path("A", "B", "C", "Y")
+        path_2 = graph_contracted.highlight_path("B", "Y")
+        
+        graph_original.unmatch("A", "X")
+        graph_contracted.unmatch("B", "X")
+        self.play(AnimationGroup(
+            *graph_original.update_matching(),
+            *graph_contracted.update_matching(),
+            Create(path_1),
+            Create(path_2),
+            ))
+        self.pause()
+
+        
+        for x in proof[9:14]:
+            self.play(Write(x, time_width=.2))
+
+        self.play(Indicate(graph_original.get_sub_group(["C", "Y"]), color=BLUE))
+        self.pause()
+        for x in proof[14:17]:
+            self.play(Write(x, time_width=.2))
+        self.pause()
+        self.play(Indicate(graph_contracted.get_sub_group(["B", "Y"]), color=BLUE))
+        self.pause()
+        
+        self.play(AnimationGroup(
+            Transform(VGroup(*proof[9:17]), MathTex(r"\checkmark", font_size=proof_font_size, color=YELLOW).next_to(proof[8], RIGHT)),
+            FadeOut(path_1),
+            FadeOut(path_2),
+            ))
+        self.pause()
+
+        for line in proof[17:]:
+            line.shift(8 * line_height * UP)
+
+        self.play(Write(proof[17], time_width=.2))
+        self.pause()
+
+        path_1 = graph_original.highlight_path("X", "A", "B", "C", "Y")
+        path_2 = graph_contracted.highlight_path("X", "B", "Y")
+        self.play(LaggedStart(
+            Create(path_1),
+            Create(path_2),
+        ))
+        self.pause()
+        
+        self.play(Write(proof[18], time_width=.2))
+        self.pause()
+
+        label_size=32
+        u1_label = MathTex(r"u_1", color=BLUE, font_size=label_size).next_to(graph_original.points["C"], DOWN + RIGHT, buff=.1)
+        v1_label = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_original.points["Y"], DOWN + RIGHT, buff=.1)
+        u2_label = MathTex(r"u_2", color=BLUE, font_size=label_size).next_to(graph_original.points["A"], DOWN, buff=.3)
+        v2_label = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_original.points["X"], DOWN)
+        
+        v1_label_contracted = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_contracted.points["Y"], DOWN + RIGHT, buff=.1)
+        v2_label_contracted = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_contracted.points["X"], DOWN)
+        b_label_contracted = MathTex(r"B'", color=BLUE, font_size=label_size).next_to(graph_contracted.points["B"], DOWN)
+
+        self.play(AnimationGroup(
+            FadeOut(path_1),
+            FadeOut(path_2),
+            lag_ratio=0.5
+            ))
+        self.pause()
+        
+        self.play(LaggedStart(
+            Write(u1_label),
+            Write(v1_label),
+            Write(u2_label),
+            Write(v2_label),
+
+            Write(v1_label_contracted),
+            Write(v2_label_contracted),
+            Write(b_label_contracted),
+            lag_ratio=0.2
+            ))
+        self.pause()
+        
+        self.play(LaggedStart(
+            Indicate(graph_original.get_sub_group(["X", "A"]), color=BLUE),
+            Indicate(graph_original.get_sub_group(["C", "Y"]), color=BLUE),
+            ))
+        self.pause()
+        
+        self.play(LaggedStart(
+            Indicate(graph_contracted.get_sub_group(["X", "B"]), color=BLUE),
+            Indicate(graph_contracted.get_sub_group(["B", "Y"]), color=BLUE),
+            ))
+        self.pause()
+
+        self.play(Write(proof[19], time_width=.2))
+        self.pause()
+        self.play(Write(proof[20], time_width=.2))
+        self.pause()
+        
+        graph_original.match("X", "A")
+        graph_original.match("C", "Y")
+        self.play(LaggedStart(
+            *graph_original.update_matching(),
+            lag_ratio=.2
+            ))
+        self.pause()
+
+        self.play(FocusOn(graph_original.points["C"].get_center()))
+        self.play(AnimationGroup(
+            Wiggle(graph_original.lines[("C", "Y")]),
+            Wiggle(graph_original.lines[("B", "C")]),
+            ))
+        self.pause()
+        graph_original.unmatch("C", "Y")
+        graph_contracted.match("X", "B")
+        self.play(AnimationGroup(
+            *graph_original.update_matching(),
+            *graph_contracted.update_matching(),
+            ))
+        self.pause()
+        
+        self.play(Write(proof[20], time_width=.2))
+        self.pause()
+        self.pause()
         self.pause()
 
 
-class LinearProgrammingIntro(Slide):
+class LinearProgrammingIntro(MyScene):
     def construct(self):
         optimize = Tex("Optimize:")
         function = MathTex(r"f(x,y)=180x+200y")
@@ -2115,7 +2333,7 @@ class LinearProgrammingIntro(Slide):
 
 
 
-class Presentation2(Slide):
+class Presentation2(MyScene):
     def construct(self):
         slides = [
             StableMatching,
