@@ -20,6 +20,20 @@ class MyScene(Scene):
         self.wait(0.25)
 
 
+def get_bounding_rect(mobject, buff=0, **kwargs):
+    top = mobject.get_top()
+    bottom = mobject.get_bottom()
+    left = mobject.get_left()
+    right = mobject.get_right()
+    points = [
+        [left - buff, top - buff, 1],
+        [right + buff, top - buff, 1],
+        [right + buff, bottom + buff, 1],
+        [left - buff, bottom + buff, 1],
+    ]
+    return Polygon(*points, **kwargs)
+
+
 class IndicateEdges(Transform):
     def __init__(
         self,
@@ -2288,7 +2302,7 @@ class LinearProgrammingIntro(MyScene):
         subject_to = Tex("Subject to constraints:")
         constraint_tex = MathTex(
             r"5x+4y & \le 80\\",
-            r"10x+20y & \le 200\\",
+            r"10x+20y & \le 220\\",
             r"x & \ge 0\\",
             r"y & \ge 0\\",
         )
@@ -2314,23 +2328,418 @@ class LinearProgrammingIntro(MyScene):
         self.play(FadeOut(g))
         self.pause()
 
-        title = Tex("Carpenter maximizing proffit")
-        bullets = BulletedList(
-            r"Tables take 10 units of lumber, 5 hours of labor. Make \$180 proffit",
-            r"Bookshelves take 20 units of lumber, 4 hours of labor. Make \$200 proffit",
-            r"200 units of lumber available",
-            r"80 hours of labor available",
-            width=4
-            )
-        
-        word_problem = VGroup(title, bullets).arrange(DOWN, aligned_edge=LEFT)
-        self.play(FadeIn(title))
+        problem_lines = [
+            (0, "Carpenter maximizing proffit"),
+            (0, r"$\bullet$ Tables take"),
+            (1, [r"10", r" units of lumber,"]),
+            (1, [r"5", r" hours of labor."]),
+            (1, [r"Make ", r"\$180", r" proffit"]),
+            (0, r"$\bullet$ Bookshelves take"),
+            (1, [r"20", r" units of lumber,"]),
+            (1, [r"4", r" hours of labor."]),
+            (1, [r"Make ", r"\$200", r" proffit"]),
+            (0, [r"$\bullet$ ", r"220 units of lumber available"]),
+            (0, [r"$\bullet$ ", r"80 hours of labor available"]),
+        ]
+
+        colors = [
+            (r"10", RED),
+            (r"20", RED),
+            (r"5", GREEN),
+            (r"4", GREEN),
+            (r"220 units", RED),
+            (r"80 hours", GREEN),
+            (r"\$180", YELLOW),
+            (r"\$200", YELLOW),
+        ]
+
+        problem_tex = VGroup(*[Tex(*([tex] if isinstance(tex, str) else tex)) for (_, tex) in problem_lines]).arrange(DOWN, aligned_edge=LEFT)
+        for i, (offset, _) in enumerate(problem_lines):
+            problem_tex[i].shift([offset/2, 0, 0])
+            for tex, color in colors:
+                problem_tex[i].set_color_by_tex(tex, color)
+
+        self.play(FadeIn(problem_tex[0]))
         self.pause()
-        for line in bullets:
+        for line in problem_tex[1:]:
             self.play(FadeIn(line))
             self.pause()
-        
 
+        self.play(problem_tex.animate.to_edge(LEFT))
+
+        function = MathTex("f(x,y)=", "180", "x", "+", "200", "y").set_color_by_tex("180", YELLOW).set_color_by_tex("200", YELLOW)
+        function.move_to((3.8, 2, 1))
+
+        self.play(FadeIn(function[0]))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FadeIn(function[2]),
+            Transform(problem_tex[4].get_part_by_tex("180").copy(), function.get_part_by_tex("180"))
+            ))
+        self.pause()
+        
+        self.play(AnimationGroup(
+            FadeIn(function[3]),
+            FadeIn(function[5]),
+            Transform(problem_tex[8].get_part_by_tex("200").copy(), function.get_part_by_tex("200"))
+            ))
+        self.pause()
+        
+        constraint_tex = MathTex(
+            r"10", r"x", r"+", r"20", r"y", r" & \le ", r"220\\",
+            r"5",  r"x", r"+", r"4",  r"y", r" & \le ", r"80\\",
+            r"x & \ge 0\\",
+            r"y & \ge 0\\",
+        ).next_to(function, DOWN, buff=.6)
+
+        colors = [
+            (r"10", RED),
+            (r"20", RED),
+            (r"220", RED),
+            (r"5", GREEN),
+            (r"4", GREEN),
+            (r"80", GREEN),
+        ]
+        for tex, color in colors:
+            constraint_tex.set_color_by_tex(tex, color)
+
+        # first iniequality
+        self.play(AnimationGroup(
+            FadeIn(constraint_tex.get_part_by_tex("x")),
+            Transform(problem_tex[2].get_part_by_tex("10").copy(), constraint_tex.get_part_by_tex("10"))
+            ))
+        self.pause()
+        self.play(AnimationGroup(
+            FadeIn(constraint_tex.get_part_by_tex("+")),
+            FadeIn(constraint_tex.get_part_by_tex("y")),
+            Transform(problem_tex[6].get_part_by_tex("20").copy(), constraint_tex.get_part_by_tex("20"))
+            ))
+        self.pause()
+        self.play(AnimationGroup(
+            FadeIn(constraint_tex[5]), # <=
+            Transform(problem_tex[9].get_part_by_tex("220").copy(), constraint_tex.get_part_by_tex("220"))
+            ))
+        self.pause()
+
+        # second inequality
+        self.play(AnimationGroup(
+            FadeIn(constraint_tex[8]), # x
+            Transform(problem_tex[3].get_part_by_tex("5").copy(), constraint_tex.get_part_by_tex("5"))
+            ))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FadeIn(constraint_tex[9]),  # +
+            FadeIn(constraint_tex[11]), # y
+            Transform(problem_tex[7].get_part_by_tex("4").copy(), constraint_tex.get_part_by_tex("4"))
+            ))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FadeIn(constraint_tex[12]), # <=
+            Transform(problem_tex[10].get_part_by_tex("80").copy(), constraint_tex.get_part_by_tex("80"))
+            ))
+        self.pause()
+
+        self.play(LaggedStart(
+            FadeIn(constraint_tex[14]),
+            FadeIn(constraint_tex[15]),
+            ))
+        self.pause()
+
+
+class LinearProgrammingGraph(MyScene):
+    def construct(self):
+        x_range = [-3, 25]
+        y_range = [-3, 20]
+        x_axis_ticks = [x for x in range(x_range[0], x_range[1] + 1) if x % 5 == 0]
+        y_axis_ticks = [y for y in range(y_range[0], y_range[1] + 1) if y % 5 == 0]
+        unit_size = .2
+        ax = Axes(
+            x_range=x_range + [1],
+            y_range=y_range + [1],
+            tips=False,
+            x_length=unit_size * x_range[1] - x_range[0],
+            y_length=unit_size * y_range[1] - y_range[0],
+            axis_config={"include_numbers": True, "tick_size": 0.07 },
+            x_axis_config={"numbers_to_include": x_axis_ticks, "numbers_with_elongated_ticks": x_axis_ticks},
+            y_axis_config={"numbers_to_include": y_axis_ticks, "numbers_with_elongated_ticks": y_axis_ticks}
+        ).to_edge(LEFT, buff=1).set_z_index(10)
+
+        self.add(ax)
+        self.pause()
+
+        x_label = Tex("Tables", font_size=38).next_to(ax[0], DOWN, buff=.5)
+        y_label = Tex("Bookshelves", font_size=38).rotate(PI/2).next_to(ax[1], LEFT, buff=.5)
+        self.play(Write(x_label))
+        self.pause()
+        self.play(Write(y_label))
+        self.pause()
+
+        point = Dot(ax.coords_to_point(5, 10), color=YELLOW, radius=.1)
+        lines = ax.get_lines_to_point(ax.c2p(5, 10))
+        value = MathTex(r"180x+200y", "=", str(180 * 5 + 200 * 10), color=YELLOW).next_to(point, RIGHT)
+        self.play(AnimationGroup(
+            Create(point),
+            Create(lines),
+            ))
+        self.pause()
+        self.play(Write(value))
+        self.pause()
+
+        p2 = ax.c2p(15,5)
+        lines_2 = ax.get_lines_to_point(p2)
+        value_2 = MathTex(r"180x+200y", "=", str(180 * 15 + 200 * 5), color=YELLOW).next_to(Dot(p2, radius=.1), RIGHT)
+        self.play(AnimationGroup(
+            point.animate.move_to(p2),
+            Transform(lines, lines_2),
+            Transform(value, value_2)
+            ))
+        self.pause()
+
+        equation = MathTex(r"f(x,y)=", r"180x+220y", color=YELLOW)
+        
+        constraint_tex = MathTex(
+            r"5x+4y & \le 80\\",
+            r"10x+20y & \le 220\\",
+            r"x & \ge 0\\",
+            r"y & \ge 0\\",
+        ).set_color_by_tex("5x", RED).set_color_by_tex("10x", GREEN)
+        
+        solution = MathTex("x=", "12", ",y=", "5", color=YELLOW)
+
+        VGroup(equation, constraint_tex, solution).arrange(DOWN).to_corner(UR)
+
+        self.play(AnimationGroup(
+            FadeOut(lines),
+            FadeOut(point),
+            FadeOut(value[1]),
+            FadeOut(value[2]),
+            FadeIn(equation[0]),
+            value[0].animate.move_to(equation[1]),
+            ))
+        self.pause()
+
+        self.play(Write(constraint_tex[0]))
+        self.pause()
+
+        line_1 = ax.plot(lambda x: (80 - 5 * x) / 4, x_range=[0, 18.4], color=RED)
+        points = [
+            line_1.get_point_from_function(0),
+            line_1.get_point_from_function(18.4),
+            ax.c2p(x_range[1], y_range[0]),
+            ax.c2p(x_range[1], y_range[1]),
+            ]
+        area_1 = Polygon(*points, fill_color=RED, stroke_width=0, fill_opacity=.5)
+        self.play(LaggedStart(
+            Create(line_1),
+            FadeIn(area_1),
+            lag_ratio=0.4 
+            ))
+        self.pause()
+
+        self.play(Write(constraint_tex[1]))
+        self.pause()
+        line_2_func = lambda x: (220 - 10 * x) / 20
+        line_2 = ax.plot(line_2_func, x_range=x_range, color=GREEN)
+        points = [
+            line_2.get_point_from_function(x_range[0]),
+            line_2.get_point_from_function(x_range[1]),
+            ax.c2p(x_range[1], y_range[1]),
+            ax.c2p(x_range[0], y_range[1]),
+            ]
+        area_2 = Polygon(*points, fill_color=GREEN, stroke_width=0, fill_opacity=.5)
+        self.play(LaggedStart(
+            Create(line_2),
+            FadeIn(area_2),
+            lag_ratio=0.4 
+            ))
+        self.pause()
+        area_3 = Polygon(
+            ax.c2p(x_range[0], 0),
+            ax.c2p(x_range[1], 0),
+            ax.c2p(x_range[1], y_range[0]),
+            ax.c2p(x_range[0], y_range[0]),
+            fill_color=BLUE, stroke_width=0, fill_opacity=.5)           
+        area_4 = Polygon(
+            ax.c2p(0, y_range[0]),
+            ax.c2p(0, y_range[1]),
+            ax.c2p(x_range[0], y_range[1]),
+            ax.c2p(x_range[0], y_range[0]),
+            fill_color=BLUE, stroke_width=0, fill_opacity=.5)
+
+        self.play(LaggedStart(
+            Write(constraint_tex[2]),
+            FadeIn(area_4),
+            Write(constraint_tex[3]),
+            FadeIn(area_3),
+            lag_ratio=0.2
+            ))
+        self.pause()
+
+        region_coords = [
+            (0, 0),
+            (0, line_2_func(0)),
+            (12, line_2_func(12)),
+            (16, 0),
+        ]
+
+        region_points = [
+            ax.c2p(*p) for p in region_coords
+            # ax.c2p(0, 0),
+            # line_2.get_point_from_function(0),
+            # line_2.get_point_from_function(12),
+            # ax.c2p(16, 0),
+            ]
+        region = Polygon(
+            *region_points,
+            stroke_width=10,
+            stroke_color=WHITE)
+        self.play(Create(region))
+        self.pause()
+        self.play(Indicate(region, color=WHITE))
+        self.pause()
+        
+        point = Dot(ax.c2p(5, 5), color=YELLOW, radius=.1)
+        lines = ax.get_lines_to_point(ax.c2p(5, 5))
+        value = MathTex(str(180 * 5 + 200 * 10), color=YELLOW).next_to(point, RIGHT)
+        self.play(AnimationGroup(
+            Create(point),
+            Create(lines),
+            Write(value),
+            ))
+        self.pause()
+
+        points = [(10, 3), (1, 1), (3, 7)]
+        for p in points:
+            p2 = ax.c2p(*p)
+            lines_new = ax.get_lines_to_point(p2)
+            value_new = MathTex(str(round(180 * p[0] + 200 * p[1])), color=YELLOW).next_to(Dot(p2, radius=.1), RIGHT)
+            self.play(AnimationGroup(
+                point.animate.move_to(p2),
+                Transform(lines, lines_new),
+                Transform(value, value_new)
+                ))
+            self.pause()
+            
+        self.play(AnimationGroup(
+            FadeOut(lines),
+            FadeOut(value),
+            FadeOut(point),
+            region.animate.set_stroke(width=2),
+            ))
+        self.pause()
+
+        dots = []
+        corners = region_points[2:] + region_points[:2]
+        for p in corners:
+            dots.append(Circle(
+                radius=.2,
+                stroke_width=4,
+                stroke_color=WHITE
+            ).move_to(p))
+
+        self.play(LaggedStart(*[Create(x) for x in dots], lag_ratio=0.1))
+        self.pause()
+
+        yellow_dots = []
+        yellow_dot_text = []
+        for point in region_coords:
+            dot = Dot(radius=.15, color=YELLOW).move_to(ax.c2p(*point))
+            yellow_dots.append(dot)
+            yellow_dot_text.append(MathTex(str(round(180 * point[0] + 200 * point[1])), color=YELLOW).next_to(dot, UR))
+
+        self.play(LaggedStart(
+            Create(yellow_dots[0]),
+            Write(yellow_dot_text[0])
+            ))
+        self.pause()
+        self.play(AnimationGroup(
+            ShrinkToCenter(yellow_dots[0]),
+            ShrinkToCenter(dots[2]),
+            FadeOut(yellow_dot_text[0])
+            ))
+        self.pause()
+
+        self.play(
+            LaggedStart(*[
+                LaggedStart(
+                Create(yellow_dots[i]),
+                Write(yellow_dot_text[i]),
+                lag_ratio=0.2,
+                ) for i in range(1, 4)], lag_ratio=.2))
+        self.pause()
+        
+        self.play(AnimationGroup(
+            ShrinkToCenter(yellow_dots[1]),
+            ShrinkToCenter(dots[3]),
+            FadeOut(yellow_dot_text[1])
+            ))
+        self.pause()
+        
+        self.play(AnimationGroup(
+            ShrinkToCenter(yellow_dots[3]),
+            ShrinkToCenter(dots[1]),
+            FadeOut(yellow_dot_text[3])
+            ))
+        self.pause()
+
+        lines = ax.get_lines_to_point(region_points[2])
+        twelve = MathTex("12", color=YELLOW).move_to(ax.c2p(12, -1))
+        five = MathTex("5", color=YELLOW).move_to(ax.c2p(-1, 5))
+        self.play(LaggedStart(
+            Create(lines),
+            Write(five),
+            Write(twelve),
+            ))
+
+        self.pause()
+
+        self.play(LaggedStart(
+            Write(solution[0]),
+            Transform(twelve, solution[1]),
+            Write(solution[2]),
+            Transform(five, solution[3]),
+            ))
+        self.pause()
+        
+        self.play(AnimationGroup(
+            FadeOut(lines),
+            FadeOut(yellow_dots[2]),
+            FadeOut(dots[0]),
+            FadeOut(yellow_dot_text[2])
+            ))
+
+        circles = []
+        for y in range(y_range[0], y_range[1] + 1):
+            for x in range(x_range[0], x_range[1] + 1):
+                value = 180 * x + 200 * y
+                p = ax.c2p(x, y)
+                circle = Circle(radius=abs(value / 100000) * 1.4, stroke_color=WHITE).move_to(p)
+                circles.append(circle)
+        self.play(LaggedStart(*[Create(x) for x in circles], lag_ratio=0.001))
+        self.pause()
+        self.pause()
+
+        arrows = []
+        for y in range(y_range[0], y_range[1] + 1):
+            for x in range(x_range[0], x_range[1] + 1):
+                direction = (180 * RIGHT + 200 * UP) / 1000
+                value = abs(180 * x + 200 * y)
+                p = ax.c2p(x, y)
+                arrow = Arrow(p, p + direction)# * (.5 + value / 10000))
+                arrows.append(arrow)
+
+        self.play(LaggedStart(*[Transform(c, a) for (c, a) in zip(circles,arrows)], lag_ratio=0.001))
+        self.pause()
+
+        self.play(LaggedStart(*[ShrinkToCenter(a) for a in reversed(circles)], lag_ratio=0.001))
+
+        
+        self.pause()
+        self.pause()
+        self.pause()
 
 
 class Presentation2(MyScene):
