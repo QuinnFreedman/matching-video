@@ -2053,7 +2053,8 @@ class BlossomShrinkingProof(MyScene):
             (3, r"$2$. $(u_1, v_1) \in M, (u_2, v_2) \not\in M$"),
             (4, r"Create an A.P. w.r.t. M' by contracting $u_1 = u_2 = B'$"),
             (4, r"New path is $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B' \rightarrow v_2 \rightarrow (P\textrm{ from }v_2)$"),
-            (3, r"$1$. $(u_1, v_1), (u_2, v_2) \not\in M$"),
+            (4, r"$M'$ is not maximum [contradiction]"),
+            (3, r"$3$. $(u_1, v_1), (u_2, v_2) \not\in M$"),
             (4, r"If the root of $B$ is unmatched"),
             (5, r"Then $B'$ is unmatched"),
             (5, r"Construct a new A.P. with $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B'$"),
@@ -2204,7 +2205,7 @@ class BlossomShrinkingProof(MyScene):
         self.pause()
 
         for line in proof[17:]:
-            line.shift(8 * line_height * UP)
+            line.shift(8.25 * line_height * UP)
 
         self.play(Write(proof[17], time_width=.2))
         self.pause()
@@ -2264,6 +2265,8 @@ class BlossomShrinkingProof(MyScene):
 
         self.play(Write(proof[19], time_width=.2))
         self.pause()
+
+        # 3.1
         self.play(Write(proof[20], time_width=.2))
         self.pause()
         
@@ -2275,12 +2278,33 @@ class BlossomShrinkingProof(MyScene):
             ))
         self.pause()
 
-        self.play(FocusOn(graph_original.points["C"].get_center()))
+        self.play(Write(proof[21], time_width=.2))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FocusOn(graph_original.points["C"].get_center()),
+            graph_original.lines[("C", "Y")].animate.set_stroke(color=YELLOW),
+            graph_original.lines[("B", "C")].animate.set_stroke(color=YELLOW),
+            ))
         self.play(AnimationGroup(
             Wiggle(graph_original.lines[("C", "Y")]),
             Wiggle(graph_original.lines[("B", "C")]),
             ))
+        self.play(AnimationGroup(
+            graph_original.lines[("C", "Y")].animate.set_stroke(color=WHITE),
+            graph_original.lines[("B", "C")].animate.set_stroke(color=WHITE),
+            ))
         self.pause()
+
+        self.play(Transform(proof[21], MathTex(r"\checkmark", font_size=proof_font_size, color=YELLOW).next_to(proof[20], RIGHT)))
+        self.pause()
+
+        for line in proof[22:]:
+            line.shift(1 * line_height * UP)
+        
+        self.play(Write(proof[22], time_width=.2))
+        self.pause()
+        
         graph_original.unmatch("C", "Y")
         graph_contracted.match("X", "B")
         self.play(AnimationGroup(
@@ -2288,9 +2312,77 @@ class BlossomShrinkingProof(MyScene):
             *graph_contracted.update_matching(),
             ))
         self.pause()
-        
-        self.play(Write(proof[20], time_width=.2))
+
+        # 3.2
+        self.play(Write(proof[23], time_width=.2))
         self.pause()
+
+        self.play(LaggedStart(
+            Indicate(graph_original.get_sub_group(["X", "A"]), color=BLUE),
+            Indicate(graph_original.get_sub_group(["C", "Y"]), color=BLUE),
+            ))
+        self.pause()
+        self.play(LaggedStart(
+            Indicate(graph_contracted.get_sub_group(["X", "B"]), color=BLUE),
+            Indicate(graph_contracted.get_sub_group(["B", "Y"]), color=BLUE),
+            ))
+        self.pause()
+
+        self.play(Write(proof[24], time_width=.2))
+        self.pause()
+
+        path_1 = graph_original.highlight_path("X", "A", "B", "C", "Y")
+        path_2 = graph_contracted.highlight_path("X", "B", "Y")
+        self.play(LaggedStart(
+            Create(path_1),
+            Create(path_2),
+        ))
+        self.pause()
+
+        graph_original.add_point("XX", graph_original.points["X"].get_center() + DOWN)
+        graph_original.add_edge("XX", "X")
+        graph_contracted.add_point("XX", graph_contracted.points["X"].get_center() + DOWN)
+        graph_contracted.add_edge("XX", "X")
+
+        path_1_x = graph_original.highlight_path("X", "XX")
+        path_2_x = graph_contracted.highlight_path("X", "XX")
+
+        self.play(LaggedStart(
+            FadeOut(v2_label),
+            FadeOut(v2_label_contracted),
+            GrowFromPoint(VGroup(graph_original.points["XX"], graph_original.lines[("X", "XX")]), graph_original.points["X"].get_center()),
+            GrowFromPoint(VGroup(graph_contracted.points["XX"], graph_contracted.lines[("X", "XX")]), graph_contracted.points["X"].get_center()),
+        ))
+        self.pause()
+        self.play(LaggedStart(
+            Create(path_1_x),
+            Create(path_2_x),
+        ))
+
+        self.play(Write(proof[25], time_width=.2))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FadeOut(path_1_x),
+            FadeOut(path_2_x),
+            FadeOut(path_1),
+            FadeOut(path_2),
+            FadeOut(graph_original.lines[("X", "XX")]),
+            FadeOut(graph_original.points["XX"]),
+            FadeOut(graph_contracted.lines[("X", "XX")]),
+            FadeOut(graph_contracted.points["XX"]),
+            FadeIn(v2_label),
+            FadeIn(v2_label_contracted),
+            Transform(VGroup(*proof[23:26]), MathTex(r"\checkmark", font_size=proof_font_size, color=YELLOW).next_to(proof[22], RIGHT)),
+        ))
+
+        for line in proof[26:]:
+            line.shift(3 * line_height * UP)
+
+        self.play(Write(proof[26], time_width=.2))
+        self.pause()
+
+
         self.pause()
         self.pause()
 
