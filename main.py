@@ -1989,7 +1989,7 @@ class BlossomShrinkingAlgorithm(MyScene):
 class BlossomShrinkingProof(MyScene):
     def construct(self):
         graph_points = {
-            "A": np.array([-1,                0,               0]),
+            "A": np.array([-1,            0,           0]),
             "B": np.array([-cos(2*pi/5),  sin(2*pi/5), 0]),
             "C": np.array([ cos(  pi/5),  sin(4*pi/5), 0]),
             "D": np.array([ cos(  pi/5), -sin(4*pi/5), 0]),
@@ -2222,13 +2222,13 @@ class BlossomShrinkingProof(MyScene):
         self.pause()
 
         label_size=32
-        u1_label = MathTex(r"u_1", color=BLUE, font_size=label_size).next_to(graph_original.points["C"], DOWN + RIGHT, buff=.1)
-        v1_label = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_original.points["Y"], DOWN + RIGHT, buff=.1)
-        u2_label = MathTex(r"u_2", color=BLUE, font_size=label_size).next_to(graph_original.points["A"], DOWN, buff=.3)
-        v2_label = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_original.points["X"], DOWN)
+        u2_label = MathTex(r"u_2", color=BLUE, font_size=label_size).next_to(graph_original.points["C"], DOWN + RIGHT, buff=.1)
+        v2_label = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_original.points["Y"], DOWN + RIGHT, buff=.1)
+        u1_label = MathTex(r"u_1", color=BLUE, font_size=label_size).next_to(graph_original.points["A"], DOWN, buff=.3)
+        v1_label = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_original.points["X"], DOWN)
         
-        v1_label_contracted = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_contracted.points["Y"], DOWN + RIGHT, buff=.1)
-        v2_label_contracted = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_contracted.points["X"], DOWN)
+        v2_label_contracted = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_contracted.points["Y"], DOWN + RIGHT, buff=.1)
+        v1_label_contracted = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_contracted.points["X"], DOWN)
         b_label_contracted = MathTex(r"B'", color=BLUE, font_size=label_size).next_to(graph_contracted.points["B"], DOWN)
 
         self.play(AnimationGroup(
@@ -2381,6 +2381,55 @@ class BlossomShrinkingProof(MyScene):
 
         self.play(Write(proof[26], time_width=.2))
         self.pause()
+
+        old_original = graph_original.get_sub_group(["A", "B", "C", "D", "E", "X", "Y", "Z"])
+
+        graph_original.add_point("W", graph_original.points["E"].get_center() + DOWN * .8 + LEFT * .8)
+        graph_original.add_edge("W", "E")
+        # graph_original.unmatch("X", "A")
+        graph_original.unmatch("B", "C")
+        graph_original.unmatch("D", "E")
+        graph_original.match("E", "W")
+        graph_original.match("C", "D")
+        graph_original.match("A", "B")
+        graph_original.update_matching(animated=False)
+
+        self.play(AnimationGroup(
+            FadeOut(old_original),
+            FadeIn(graph_original.get_sub_group(["A", "B", "C", "D", "E", "W", "Y", "Z"]).set_z_index(10)),
+            # FadeOut(graph_original.points["X"]),
+            # FadeOut(graph_original.lines[("Z", "X")]),
+            v1_label.animate.next_to(graph_original.points["Z"], UP + RIGHT, buff=.1),
+            u1_label.animate.next_to(graph_original.points["D"], UP + RIGHT, buff=.1),
+            v1_label_contracted.animate.next_to(graph_contracted.points["Z"], UP + RIGHT, buff=.1),
+        ))
+
+        path = graph_original.highlight_path("Y", "C", "D", "Z")
+        self.play(Create(path))
+        self.pause()
+
+        self.play(FocusOn(graph_original.points["E"].get_center()))
+        self.pause()
+
+        self.play(Indicate(graph_original.get_sub_group(["W", "E"])))
+        self.pause()
+
+        graph_original.add_point("WW", graph_original.points["W"].get_center() + LEFT)
+        graph_original.add_edge("W", "WW")
+        self.play(LaggedStart(
+            GrowFromPoint(
+                VGroup(graph_original.points["WW"], graph_original.lines[("W", "WW")]),
+                graph_original.points["W"].get_center()
+            ),
+            GrowFromPoint(
+                VGroup(graph_contracted.points["XX"], graph_contracted.lines[("X", "XX")]),
+                graph_contracted.points["X"].get_center()
+            ),
+        ))
+        self.pause()
+
+        path2 = graph_contracted.highlight_path("Y", "B", "X", "XX")
+        self.play(Create(path2))
 
 
         self.pause()
