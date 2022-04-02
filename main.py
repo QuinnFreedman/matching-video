@@ -2295,6 +2295,53 @@ class BlossomShrinkingProof(MyScene):
         self.pause()
 
 
+class LinearProgrammingReframing(MyScene):
+    def construct(self):
+        vspace = 1.4
+        graph_points = {
+            "A": [0, 2 * vspace, 1],
+            "B": [0, vspace, 1],
+            "C": [0, 0, 1],
+            "X": [3, 2 * vspace, 1],
+            "Y": [3, vspace, 1],
+            "Z": [3, 0, 1],
+        }
+        graph = Graph(graph_points)
+        graph.get_group().move_to(ORIGIN).to_edge(UP)
+
+        for a in ["A", "B", "C"]:
+            for x in ["X", "Y", "Z"]:
+                graph.add_edge(a, x)
+        
+        graph.draw_points(self)
+        graph.draw_edges(self)
+        self.pause()
+
+        tex = MathTex(
+            r"\textrm{maximize } & ", r"\sum\nolimits_{e\in E}{", r"w_e", r"x_e", r"}\\",
+            r"\textrm{subject to } & \sum\nolimits_{e\in E:v \in e}{x_e} \le 1 \textrm{ }\forall v \in V\\",
+            r"\textrm{and } & x_e \in \{0, 1\} \textrm{ }\forall e \in E\\",
+        )
+
+        tex.next_to(graph.get_group(), DOWN)
+
+        self.play(AnimationGroup(*[FadeIn(x) for x in tex[:5]]))
+        self.pause()
+
+        self.play(Indicate(tex[2]))
+        self.pause()
+        self.play(Indicate(tex[3]))
+        self.pause()
+        self.play(Indicate(VGroup(*tex[2:4])))
+        self.pause()
+        self.play(Indicate(tex[1]))
+        self.pause()
+        
+        self.pause()
+        self.pause()
+        self.pause()
+
+
 class LinearProgrammingIntro(MyScene):
     def construct(self):
         optimize = Tex("Optimize:")
