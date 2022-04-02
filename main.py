@@ -2515,6 +2515,18 @@ class LinearProgrammingReframing(MyScene):
         self.pause()
 
 
+class LPTitleCard(MyScene):
+    def construct(self):
+        title = Tex("Linear Programming", font_size=64)
+        self.play(Write(title))
+        self.pause()
+        self.play(Transform(title, Tex("Linear Planning", font_size=64)))
+        self.pause()
+        self.play(Transform(title, Tex(r"Optimizing with\\ linear constraints", font_size=64)))
+        self.pause()
+        self.play(FadeOut(title))
+        self.pause()
+
 class LinearProgrammingIntro(MyScene):
     def construct(self):
         optimize = Tex("Optimize:")
