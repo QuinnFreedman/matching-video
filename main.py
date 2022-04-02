@@ -82,9 +82,15 @@ class Path(VMobject, metaclass=ConvertToOpenGL):
             [np.array(vertex) for vertex in vertices],
         )
 
-
 class Graph:
-    def __init__(self, points, scale=1, solid_color=WHITE, dashed_color=WHITE):
+    def DefaultUnconnectedEdge(self, p1, p2):
+            return DashedLine(p1, p2, stroke_width=10*self.scale, dash_length=0.1*self.scale, dashed_ratio=0.4, stroke_color=self.dashed_color)
+        
+    def DefaultConnectedEdge(self, p1, p2):
+            return Line(p1, p2, stroke_width=10*self.scale, stroke_color=self.solid_color)
+
+
+    def __init__(self, points, scale=1, solid_color=WHITE, dashed_color=WHITE, connected_edge=None, unconnected_edge=None):
         self.points = {label: Dot(p, radius=.15*scale) for (label, p) in points.items()}
         self.edges = set()
         self.matching = set()
@@ -92,6 +98,8 @@ class Graph:
         self.scale=scale
         self.solid_color = solid_color
         self.dashed_color = dashed_color
+        self.connected_edge = connected_edge or self.DefaultConnectedEdge
+        self.unconnected_edge = unconnected_edge or self.DefaultUnconnectedEdge
 
     def get_group(self):
         return VGroup(
@@ -135,19 +143,13 @@ class Graph:
     def add_point(self, label, p, hidden=False):
         self.points[label] = Dot(p, radius=0 if hidden else .15*self.scale)
 
-    def UnconnectedEdge(self, p1, p2):
-            return DashedLine(p1, p2, stroke_width=10*self.scale, dash_length=0.1*self.scale, dashed_ratio=0.4, stroke_color=self.dashed_color)
-            
-    def ConnectedEdge(self, p1, p2):
-            return Line(p1, p2, stroke_width=10*self.scale, stroke_color=self.solid_color)
-
     def _make_edge(self, edge):
         p1 = self.points[edge[0]].get_center()
         p2 = self.points[edge[1]].get_center()
         if edge in self.matching:
-            return self.ConnectedEdge(p1, p2)
+            return self.connected_edge(p1, p2)
         else:
-            return self.UnconnectedEdge(p1, p2)
+            return self.unconnected_edge(p1, p2)
         
     def make_edges(self):
         pass
@@ -195,7 +197,7 @@ class Graph:
         ) for edge in edges]
         return AnimationGroup(
             *[self.points[key].animate.move_to(new_point) for key, new_point in new_points.items()],
-            *[Transform(self.lines[edge], (self.ConnectedEdge if edge in self.matching else self.UnconnectedEdge)(start, end))
+            *[Transform(self.lines[edge], (self.connected_edge if edge in self.matching else self.unconnected_edge)(start, end))
               if edge in dont_stretch else self.lines[edge].animate.put_start_and_end_on(start, end)
               for (start, end, edge) in new_line_start_ends],
         )
@@ -2455,7 +2457,7 @@ class BlossomShrinkingProof(MyScene):
 
 class LinearProgrammingReframing(MyScene):
     def construct(self):
-        vspace = 1.4
+        vspace = 1.5
         graph_points = {
             "A": [0, 2 * vspace, 1],
             "B": [0, vspace, 1],
@@ -2464,8 +2466,8 @@ class LinearProgrammingReframing(MyScene):
             "Y": [3, vspace, 1],
             "Z": [3, 0, 1],
         }
-        graph = Graph(graph_points)
-        graph.get_group().move_to(ORIGIN).to_edge(UP)
+        graph = Graph(graph_points, unconnected_edge=lambda p1, p2: Line(p1, p2, stroke_width=5, stroke_color=WHITE))
+        graph.get_group().move_to(ORIGIN).to_edge(UP, buff=.7)
 
         for a in ["A", "B", "C"]:
             for x in ["X", "Y", "Z"]:
@@ -2477,11 +2479,11 @@ class LinearProgrammingReframing(MyScene):
 
         tex = MathTex(
             r"\textrm{maximize } & ", r"\sum\nolimits_{e\in E}{", r"w_e", r"x_e", r"}\\",
-            r"\textrm{subject to } & \sum\nolimits_{e\in E:v \in e}{x_e} \le 1 \textrm{ }\forall v \in V\\",
+            r"\textrm{subject to } & ", r"\sum\nolimits_", r"{e\in E:v \in e}", r"{x_e} \le 1 \textrm{ }", r"\forall v \in V\\",
             r"\textrm{and } & x_e \in \{0, 1\} \textrm{ }\forall e \in E\\",
         )
 
-        tex.next_to(graph.get_group(), DOWN)
+        tex.next_to(graph.get_group(), DOWN, buff=.7)
 
         self.play(AnimationGroup(*[FadeIn(x) for x in tex[:5]]))
         self.pause()
@@ -2493,6 +2495,19 @@ class LinearProgrammingReframing(MyScene):
         self.play(Indicate(VGroup(*tex[2:4])))
         self.pause()
         self.play(Indicate(tex[1]))
+        self.pause()
+
+        self.play(AnimationGroup(*[FadeIn(x) for x in tex[5:10]]))
+        self.pause()
+        self.play(Indicate(tex[9]))
+        self.pause()
+        self.play(Circumscribe(tex[6:9]))
+        self.pause()
+        self.play(Indicate(tex[7]))
+        self.pause()
+        self.play(Indicate(tex[8]))
+        self.pause()
+        self.play(AnimationGroup(*[FadeIn(x) for x in tex[10]]))
         self.pause()
         
         self.pause()
