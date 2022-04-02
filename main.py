@@ -54,6 +54,23 @@ class IndicateEdges(Transform):
         return target
 
 
+class Blink(Transform):
+    def __init__(
+        self,
+        mobject: "Mobject",
+        opacity = 1,
+        rate_func: Callable[[float, Optional[float]], np.ndarray] = there_and_back,
+        **kwargs
+    ) -> None:
+        self.opacity = opacity
+        super().__init__(mobject, rate_func=rate_func, **kwargs)
+
+    def create_target(self) -> "Mobject":
+        target = self.mobject.copy()
+        target.set_opacity(self.opacity)
+        return target
+
+
 class Path(VMobject, metaclass=ConvertToOpenGL):
     def __init__(self, *points: Sequence[float], color=BLUE, **kwargs):
         super().__init__(color=color, **kwargs)
@@ -2606,7 +2623,7 @@ class LinearProgrammingGraph(MyScene):
             axis_config={"include_numbers": True, "tick_size": 0.07 },
             x_axis_config={"numbers_to_include": x_axis_ticks, "numbers_with_elongated_ticks": x_axis_ticks},
             y_axis_config={"numbers_to_include": y_axis_ticks, "numbers_with_elongated_ticks": y_axis_ticks}
-        ).to_edge(LEFT, buff=1).set_z_index(10)
+        ).to_edge(LEFT, buff=.75).to_edge(UP, buff=.25).set_z_index(10)
 
         self.add(ax)
         self.pause()
@@ -2650,7 +2667,7 @@ class LinearProgrammingGraph(MyScene):
         
         solution = MathTex("x=", "12", ",y=", "5", color=YELLOW)
 
-        VGroup(equation, constraint_tex, solution).arrange(DOWN).to_corner(UR)
+        VGroup(equation, constraint_tex, solution).arrange(DOWN).to_edge(UP, buff=.5).to_edge(RIGHT, buff=.3)
 
         self.play(AnimationGroup(
             FadeOut(lines),
@@ -2851,6 +2868,7 @@ class LinearProgrammingGraph(MyScene):
             FadeOut(dots[0]),
             FadeOut(yellow_dot_text[2])
             ))
+        self.pause()
 
         circles = []
         for y in range(y_range[0], y_range[1] + 1):
@@ -2876,8 +2894,60 @@ class LinearProgrammingGraph(MyScene):
         self.pause()
 
         self.play(LaggedStart(*[ShrinkToCenter(a) for a in reversed(circles)], lag_ratio=0.001))
+        self.pause()
 
-        
+        point = ax.c2p(5, 4)
+        point = Dot(point, color=WHITE, radius=.1)
+        self.play(GrowFromCenter(point))
+        self.pause()
+
+        slope = -180 / 200
+        line = ax.plot(lambda x: slope * x - 5 * slope + 4, x_range=[x_range[0], 12.778], color=WHITE)
+        self.play(GrowFromCenter(line))
+        self.pause()
+
+        arrow = Arrow(point.get_center(), point.get_center() + (180 * RIGHT + 200 * UP) / 300, buff=0)
+        self.play(GrowArrow(arrow))
+        self.pause()
+
+        region_coords = [
+            (-3, 11.2),
+            (12.778, -3),
+            (x_range[1], y_range[0]),
+            (x_range[1], y_range[1]),
+            (x_range[0], y_range[1]),
+        ]
+        region_points = [ ax.c2p(*p) for p in region_coords ]
+        region1 = Polygon(
+            *region_points,
+            stroke_width=0,
+            fill_color=WHITE)
+        region_coords = [
+            (-3, 11.2),
+            (12.778, -3),
+            (x_range[0], y_range[0]),
+        ]
+        region_points = [ ax.c2p(*p) for p in region_coords ]
+        region2 = Polygon(
+            *region_points,
+            stroke_width=0,
+            fill_color=WHITE)
+
+        self.play(Blink(region1, opacity=.5))
+        self.pause()
+        self.play(Blink(region2, opacity=.5))
+        self.pause()
+
+        line2 = ax.plot(lambda x: slope * x - 7.5 * slope + 6.5, x_range=[x_range[0], 18.056], color=WHITE)
+        self.play(Transform(line.copy(), line2))
+        self.pause()
+
+        line3 = ax.plot(lambda x: slope * x - 12 * slope + 5, x_range=[x_range[0], 20.889], color=WHITE)
+        self.play(Transform(line2.copy(), line3))
+        self.pause()
+
+        self.play(Create(dots[0]))
+
         self.pause()
         self.pause()
         self.pause()
