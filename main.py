@@ -54,6 +54,23 @@ class IndicateEdges(Transform):
         return target
 
 
+class Blink(Transform):
+    def __init__(
+        self,
+        mobject: "Mobject",
+        opacity = 1,
+        rate_func: Callable[[float, Optional[float]], np.ndarray] = there_and_back,
+        **kwargs
+    ) -> None:
+        self.opacity = opacity
+        super().__init__(mobject, rate_func=rate_func, **kwargs)
+
+    def create_target(self) -> "Mobject":
+        target = self.mobject.copy()
+        target.set_opacity(self.opacity)
+        return target
+
+
 class Path(VMobject, metaclass=ConvertToOpenGL):
     def __init__(self, *points: Sequence[float], color=BLUE, **kwargs):
         super().__init__(color=color, **kwargs)
@@ -1989,7 +2006,7 @@ class BlossomShrinkingAlgorithm(MyScene):
 class BlossomShrinkingProof(MyScene):
     def construct(self):
         graph_points = {
-            "A": np.array([-1,                0,               0]),
+            "A": np.array([-1,            0,           0]),
             "B": np.array([-cos(2*pi/5),  sin(2*pi/5), 0]),
             "C": np.array([ cos(  pi/5),  sin(4*pi/5), 0]),
             "D": np.array([ cos(  pi/5), -sin(4*pi/5), 0]),
@@ -2053,7 +2070,8 @@ class BlossomShrinkingProof(MyScene):
             (3, r"$2$. $(u_1, v_1) \in M, (u_2, v_2) \not\in M$"),
             (4, r"Create an A.P. w.r.t. M' by contracting $u_1 = u_2 = B'$"),
             (4, r"New path is $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B' \rightarrow v_2 \rightarrow (P\textrm{ from }v_2)$"),
-            (3, r"$1$. $(u_1, v_1), (u_2, v_2) \not\in M$"),
+            (4, r"$M'$ is not maximum [contradiction]"),
+            (3, r"$3$. $(u_1, v_1), (u_2, v_2) \not\in M$"),
             (4, r"If the root of $B$ is unmatched"),
             (5, r"Then $B'$ is unmatched"),
             (5, r"Construct a new A.P. with $(P\textrm{ up to }v_1) \rightarrow v_1 \rightarrow B'$"),
@@ -2204,7 +2222,7 @@ class BlossomShrinkingProof(MyScene):
         self.pause()
 
         for line in proof[17:]:
-            line.shift(8 * line_height * UP)
+            line.shift(8.25 * line_height * UP)
 
         self.play(Write(proof[17], time_width=.2))
         self.pause()
@@ -2221,13 +2239,13 @@ class BlossomShrinkingProof(MyScene):
         self.pause()
 
         label_size=32
-        u1_label = MathTex(r"u_1", color=BLUE, font_size=label_size).next_to(graph_original.points["C"], DOWN + RIGHT, buff=.1)
-        v1_label = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_original.points["Y"], DOWN + RIGHT, buff=.1)
-        u2_label = MathTex(r"u_2", color=BLUE, font_size=label_size).next_to(graph_original.points["A"], DOWN, buff=.3)
-        v2_label = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_original.points["X"], DOWN)
+        u2_label = MathTex(r"u_2", color=BLUE, font_size=label_size).next_to(graph_original.points["C"], DOWN + RIGHT, buff=.1)
+        v2_label = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_original.points["Y"], DOWN + RIGHT, buff=.1)
+        u1_label = MathTex(r"u_1", color=BLUE, font_size=label_size).next_to(graph_original.points["A"], DOWN, buff=.3)
+        v1_label = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_original.points["X"], DOWN)
         
-        v1_label_contracted = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_contracted.points["Y"], DOWN + RIGHT, buff=.1)
-        v2_label_contracted = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_contracted.points["X"], DOWN)
+        v2_label_contracted = MathTex(r"v_2", color=BLUE, font_size=label_size).next_to(graph_contracted.points["Y"], DOWN + RIGHT, buff=.1)
+        v1_label_contracted = MathTex(r"v_1", color=BLUE, font_size=label_size).next_to(graph_contracted.points["X"], DOWN)
         b_label_contracted = MathTex(r"B'", color=BLUE, font_size=label_size).next_to(graph_contracted.points["B"], DOWN)
 
         self.play(AnimationGroup(
@@ -2264,6 +2282,8 @@ class BlossomShrinkingProof(MyScene):
 
         self.play(Write(proof[19], time_width=.2))
         self.pause()
+
+        # 3.1
         self.play(Write(proof[20], time_width=.2))
         self.pause()
         
@@ -2275,12 +2295,33 @@ class BlossomShrinkingProof(MyScene):
             ))
         self.pause()
 
-        self.play(FocusOn(graph_original.points["C"].get_center()))
+        self.play(Write(proof[21], time_width=.2))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FocusOn(graph_original.points["C"].get_center()),
+            graph_original.lines[("C", "Y")].animate.set_stroke(color=YELLOW),
+            graph_original.lines[("B", "C")].animate.set_stroke(color=YELLOW),
+            ))
         self.play(AnimationGroup(
             Wiggle(graph_original.lines[("C", "Y")]),
             Wiggle(graph_original.lines[("B", "C")]),
             ))
+        self.play(AnimationGroup(
+            graph_original.lines[("C", "Y")].animate.set_stroke(color=WHITE),
+            graph_original.lines[("B", "C")].animate.set_stroke(color=WHITE),
+            ))
         self.pause()
+
+        self.play(Transform(proof[21], MathTex(r"\checkmark", font_size=proof_font_size, color=YELLOW).next_to(proof[20], RIGHT)))
+        self.pause()
+
+        for line in proof[22:]:
+            line.shift(1 * line_height * UP)
+        
+        self.play(Write(proof[22], time_width=.2))
+        self.pause()
+        
         graph_original.unmatch("C", "Y")
         graph_contracted.match("X", "B")
         self.play(AnimationGroup(
@@ -2288,9 +2329,126 @@ class BlossomShrinkingProof(MyScene):
             *graph_contracted.update_matching(),
             ))
         self.pause()
-        
-        self.play(Write(proof[20], time_width=.2))
+
+        # 3.2
+        self.play(Write(proof[23], time_width=.2))
         self.pause()
+
+        self.play(LaggedStart(
+            Indicate(graph_original.get_sub_group(["X", "A"]), color=BLUE),
+            Indicate(graph_original.get_sub_group(["C", "Y"]), color=BLUE),
+            ))
+        self.pause()
+        self.play(LaggedStart(
+            Indicate(graph_contracted.get_sub_group(["X", "B"]), color=BLUE),
+            Indicate(graph_contracted.get_sub_group(["B", "Y"]), color=BLUE),
+            ))
+        self.pause()
+
+        self.play(Write(proof[24], time_width=.2))
+        self.pause()
+
+        path_1 = graph_original.highlight_path("X", "A", "B", "C", "Y")
+        path_2 = graph_contracted.highlight_path("X", "B", "Y")
+        self.play(LaggedStart(
+            Create(path_1),
+            Create(path_2),
+        ))
+        self.pause()
+
+        graph_original.add_point("XX", graph_original.points["X"].get_center() + DOWN)
+        graph_original.add_edge("XX", "X")
+        graph_contracted.add_point("XX", graph_contracted.points["X"].get_center() + DOWN)
+        graph_contracted.add_edge("XX", "X")
+
+        path_1_x = graph_original.highlight_path("X", "XX")
+        path_2_x = graph_contracted.highlight_path("X", "XX")
+
+        self.play(LaggedStart(
+            FadeOut(v2_label),
+            FadeOut(v2_label_contracted),
+            GrowFromPoint(VGroup(graph_original.points["XX"], graph_original.lines[("X", "XX")]), graph_original.points["X"].get_center()),
+            GrowFromPoint(VGroup(graph_contracted.points["XX"], graph_contracted.lines[("X", "XX")]), graph_contracted.points["X"].get_center()),
+        ))
+        self.pause()
+        self.play(LaggedStart(
+            Create(path_1_x),
+            Create(path_2_x),
+        ))
+
+        self.play(Write(proof[25], time_width=.2))
+        self.pause()
+
+        self.play(AnimationGroup(
+            FadeOut(path_1_x),
+            FadeOut(path_2_x),
+            FadeOut(path_1),
+            FadeOut(path_2),
+            FadeOut(graph_original.lines[("X", "XX")]),
+            FadeOut(graph_original.points["XX"]),
+            FadeOut(graph_contracted.lines[("X", "XX")]),
+            FadeOut(graph_contracted.points["XX"]),
+            FadeIn(v2_label),
+            FadeIn(v2_label_contracted),
+            Transform(VGroup(*proof[23:26]), MathTex(r"\checkmark", font_size=proof_font_size, color=YELLOW).next_to(proof[22], RIGHT)),
+        ))
+
+        for line in proof[26:]:
+            line.shift(3 * line_height * UP)
+
+        self.play(Write(proof[26], time_width=.2))
+        self.pause()
+
+        old_original = graph_original.get_sub_group(["A", "B", "C", "D", "E", "X", "Y", "Z"])
+
+        graph_original.add_point("W", graph_original.points["E"].get_center() + DOWN * .8 + LEFT * .8)
+        graph_original.add_edge("W", "E")
+        # graph_original.unmatch("X", "A")
+        graph_original.unmatch("B", "C")
+        graph_original.unmatch("D", "E")
+        graph_original.match("E", "W")
+        graph_original.match("C", "D")
+        graph_original.match("A", "B")
+        graph_original.update_matching(animated=False)
+
+        self.play(AnimationGroup(
+            FadeOut(old_original),
+            FadeIn(graph_original.get_sub_group(["A", "B", "C", "D", "E", "W", "Y", "Z"]).set_z_index(10)),
+            # FadeOut(graph_original.points["X"]),
+            # FadeOut(graph_original.lines[("Z", "X")]),
+            v1_label.animate.next_to(graph_original.points["Z"], UP + RIGHT, buff=.1),
+            u1_label.animate.next_to(graph_original.points["D"], UP + RIGHT, buff=.1),
+            v1_label_contracted.animate.next_to(graph_contracted.points["Z"], UP + RIGHT, buff=.1),
+        ))
+
+        path = graph_original.highlight_path("Y", "C", "D", "Z")
+        self.play(Create(path))
+        self.pause()
+
+        self.play(FocusOn(graph_original.points["E"].get_center()))
+        self.pause()
+
+        self.play(Indicate(graph_original.get_sub_group(["W", "E"])))
+        self.pause()
+
+        graph_original.add_point("WW", graph_original.points["W"].get_center() + LEFT)
+        graph_original.add_edge("W", "WW")
+        self.play(LaggedStart(
+            GrowFromPoint(
+                VGroup(graph_original.points["WW"], graph_original.lines[("W", "WW")]),
+                graph_original.points["W"].get_center()
+            ),
+            GrowFromPoint(
+                VGroup(graph_contracted.points["XX"], graph_contracted.lines[("X", "XX")]),
+                graph_contracted.points["X"].get_center()
+            ),
+        ))
+        self.pause()
+
+        path2 = graph_contracted.highlight_path("Y", "B", "X", "XX")
+        self.play(Create(path2))
+
+
         self.pause()
         self.pause()
 
@@ -2512,7 +2670,7 @@ class LinearProgrammingGraph(MyScene):
             axis_config={"include_numbers": True, "tick_size": 0.07 },
             x_axis_config={"numbers_to_include": x_axis_ticks, "numbers_with_elongated_ticks": x_axis_ticks},
             y_axis_config={"numbers_to_include": y_axis_ticks, "numbers_with_elongated_ticks": y_axis_ticks}
-        ).to_edge(LEFT, buff=1).set_z_index(10)
+        ).to_edge(LEFT, buff=.75).to_edge(UP, buff=.25).set_z_index(10)
 
         self.add(ax)
         self.pause()
@@ -2556,7 +2714,7 @@ class LinearProgrammingGraph(MyScene):
         
         solution = MathTex("x=", "12", ",y=", "5", color=YELLOW)
 
-        VGroup(equation, constraint_tex, solution).arrange(DOWN).to_corner(UR)
+        VGroup(equation, constraint_tex, solution).arrange(DOWN).to_edge(UP, buff=.5).to_edge(RIGHT, buff=.3)
 
         self.play(AnimationGroup(
             FadeOut(lines),
@@ -2757,6 +2915,7 @@ class LinearProgrammingGraph(MyScene):
             FadeOut(dots[0]),
             FadeOut(yellow_dot_text[2])
             ))
+        self.pause()
 
         circles = []
         for y in range(y_range[0], y_range[1] + 1):
@@ -2782,8 +2941,60 @@ class LinearProgrammingGraph(MyScene):
         self.pause()
 
         self.play(LaggedStart(*[ShrinkToCenter(a) for a in reversed(circles)], lag_ratio=0.001))
+        self.pause()
 
-        
+        point = ax.c2p(5, 4)
+        point = Dot(point, color=WHITE, radius=.1)
+        self.play(GrowFromCenter(point))
+        self.pause()
+
+        slope = -180 / 200
+        line = ax.plot(lambda x: slope * x - 5 * slope + 4, x_range=[x_range[0], 12.778], color=WHITE)
+        self.play(GrowFromCenter(line))
+        self.pause()
+
+        arrow = Arrow(point.get_center(), point.get_center() + (180 * RIGHT + 200 * UP) / 300, buff=0)
+        self.play(GrowArrow(arrow))
+        self.pause()
+
+        region_coords = [
+            (-3, 11.2),
+            (12.778, -3),
+            (x_range[1], y_range[0]),
+            (x_range[1], y_range[1]),
+            (x_range[0], y_range[1]),
+        ]
+        region_points = [ ax.c2p(*p) for p in region_coords ]
+        region1 = Polygon(
+            *region_points,
+            stroke_width=0,
+            fill_color=WHITE)
+        region_coords = [
+            (-3, 11.2),
+            (12.778, -3),
+            (x_range[0], y_range[0]),
+        ]
+        region_points = [ ax.c2p(*p) for p in region_coords ]
+        region2 = Polygon(
+            *region_points,
+            stroke_width=0,
+            fill_color=WHITE)
+
+        self.play(Blink(region1, opacity=.5))
+        self.pause()
+        self.play(Blink(region2, opacity=.5))
+        self.pause()
+
+        line2 = ax.plot(lambda x: slope * x - 7.5 * slope + 6.5, x_range=[x_range[0], 18.056], color=WHITE)
+        self.play(Transform(line.copy(), line2))
+        self.pause()
+
+        line3 = ax.plot(lambda x: slope * x - 12 * slope + 5, x_range=[x_range[0], 20.889], color=WHITE)
+        self.play(Transform(line2.copy(), line3))
+        self.pause()
+
+        self.play(Create(dots[0]))
+
         self.pause()
         self.pause()
         self.pause()
