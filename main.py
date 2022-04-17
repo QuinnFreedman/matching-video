@@ -1,5 +1,3 @@
-from asyncio import shield
-from calendar import c
 from manim import *
 from manim.animation.animation import DEFAULT_ANIMATION_RUN_TIME
 from manim.mobject.opengl_compatibility import ConvertToOpenGL
@@ -83,11 +81,11 @@ class Path(VMobject, metaclass=ConvertToOpenGL):
         )
 
 class Graph:
-    def DefaultUnconnectedEdge(self, p1, p2):
-            return DashedLine(p1, p2, stroke_width=10*self.scale, dash_length=0.1*self.scale, dashed_ratio=0.4, stroke_color=self.dashed_color)
+    def DefaultUnconnectedEdge(self, p1, p2, **kwargs):
+            return DashedLine(p1, p2, stroke_width=10*self.scale, dash_length=0.1*self.scale, dashed_ratio=0.4, stroke_color=self.dashed_color, **kwargs)
         
-    def DefaultConnectedEdge(self, p1, p2):
-            return Line(p1, p2, stroke_width=10*self.scale, stroke_color=self.solid_color)
+    def DefaultConnectedEdge(self, p1, p2, **kwargs):
+            return Line(p1, p2, stroke_width=10*self.scale, stroke_color=self.solid_color, **kwargs)
 
 
     def __init__(self, points, scale=1, solid_color=WHITE, dashed_color=WHITE, connected_edge=None, unconnected_edge=None):
@@ -103,22 +101,22 @@ class Graph:
 
     def get_group(self):
         return VGroup(
-            *self.points.values(),
             *self.lines.values(),
+            *self.points.values(),
         )
         
     def get_sub_group(self, vertices):
         points = [self.points[v] for v in vertices]
         edges = [self.lines[e] for e in self.edges if e[0] in vertices and e[1] in vertices]
-        return Group(*points, *edges)
+        return Group(*edges, *points)
 
     def draw_points(self, scene):
         scene.add(*self.points.values())
 
     def apply_to_all(self, animation, **kwargs):
         return AnimationGroup(
-            *[animation(p) for p in self.points.values()],
             *[animation(l) for l in self.lines.values()],
+            *[animation(p) for p in self.points.values()],
             **kwargs
         )
 
@@ -141,15 +139,15 @@ class Graph:
         self.lines[edge] = line
 
     def add_point(self, label, p, hidden=False):
-        self.points[label] = Dot(p, radius=0 if hidden else .15*self.scale)
+        self.points[label] = Dot(p, radius=0 if hidden else .15*self.scale, z_index=100)
 
     def _make_edge(self, edge):
         p1 = self.points[edge[0]].get_center()
         p2 = self.points[edge[1]].get_center()
         if edge in self.matching:
-            return self.connected_edge(p1, p2)
+            return self.connected_edge(p1, p2, buff=.15*self.scale)
         else:
-            return self.unconnected_edge(p1, p2)
+            return self.unconnected_edge(p1, p2, buff=.15*self.scale)
         
     def make_edges(self):
         pass
@@ -1106,7 +1104,8 @@ class AugmentingPath(MyScene):
         self.play(AnimationGroup(
             graph.apply_to_all(FadeOut),
             *[FadeOut(t) for t in text],
-            FadeOut(ul)
+            FadeOut(ul),
+            FadeOut(paths[1])
             ))
         self.pause()
 
@@ -1131,8 +1130,9 @@ class MaximumImpliesNoAP(MyScene):
         graph = _make_even_cycle_graph()
         graph.match("B", "C")
         graph.match("D", "E")
-        graph.draw_points(self)
+        graph.update_matching(animated=False)
         graph.draw_edges(self)
+        graph.draw_points(self)
 
         path = ["A", "B", "C", "F"]
         
@@ -1242,6 +1242,7 @@ class NoAPImpliesMaximum(MyScene):
             line.set_color_by_tex("M", YELLOW)
             line.set_color_by_tex("M'", BLUE)
             line.set_color_by_tex("H", LIGHT_BROWN)
+            line.set_color_by_tex(r"\circ", BLACK)
         proof = Group(
             *lines[:-3],
             Group(*lines[-3:]).arrange(RIGHT, buff=0.2)
@@ -1272,6 +1273,7 @@ class NoAPImpliesMaximum(MyScene):
         g2.add_edge("D", "A")
         g2.match("A", "B")
         g2.match("C", "D")
+        g2.update_matching(animated=False)
         
         g3 = g({
             "A": [ 0,            1,           0],
@@ -1288,6 +1290,7 @@ class NoAPImpliesMaximum(MyScene):
         g3.match("A", "B")
         g3.match("C", "D")
         g3.match("E", "A")
+        g3.update_matching(animated=False)
 
         h = 0.2
         step = sqrt(1 - h**2)
@@ -1304,6 +1307,7 @@ class NoAPImpliesMaximum(MyScene):
         g4.add_edge("D", "E")
         g4.match("A", "B")
         g4.match("C", "D")
+        g4.update_matching(animated=False)
 
         g5 = g({
             "A": [  0,    0, 0],
@@ -1321,6 +1325,7 @@ class NoAPImpliesMaximum(MyScene):
         g5.match("A", "B")
         g5.match("C", "D")
         g5.match("E", "F")
+        g5.update_matching(animated=False)
 
         g6 = g({
             "A": [  0,    0, 0],
@@ -1337,6 +1342,7 @@ class NoAPImpliesMaximum(MyScene):
         g6.add_edge("E", "F")
         g6.match("B", "C")
         g6.match("D", "E")
+        g6.update_matching(animated=False)
 
         vstack = Group(g5.get_group(), g6.get_group()).arrange(DOWN, buff=0.5)
 
@@ -1349,8 +1355,8 @@ class NoAPImpliesMaximum(MyScene):
         group.to_edge(DOWN, buff=.5)
 
         for g in [g2, g4, g5, g6]:
-            g.draw_points(self)
             g.draw_edges(self)
+            g.draw_points(self)
 
         self.pause()
         
@@ -1358,17 +1364,17 @@ class NoAPImpliesMaximum(MyScene):
         self.pause()
 
         g3.get_group().to_edge(RIGHT, buff=.5)
-        g3.draw_points(self)
         g3.draw_edges(self)
+        g3.draw_points(self)
         self.pause()
         g3.unmatch("E", "A")
-        self.play(AnimationGroup(*g3.update_matching()))
+        self.play(*g3.update_matching())
         self.pause()
         g3.match("E", "A")
-        self.play(AnimationGroup(*g3.update_matching()))
+        self.play(*g3.update_matching())
         self.pause()
         g3.unmatch("E", "A")
-        self.play(AnimationGroup(*g3.update_matching()))
+        self.play(*g3.update_matching())
         self.pause()
         self.play(g3.apply_to_all(FadeOut))
         self.pause()
