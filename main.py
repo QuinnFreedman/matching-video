@@ -935,6 +935,9 @@ class FourProblems(MyScene):
         graph_scale = .6
         def scale_map(map, scalar):
             return {k: [scalar * x for x in v] for k, v in map.items()}
+        
+        def solid_line(p1, p2, **kwargs):
+            return Line(p1, p2, stroke_width=8*graph_scale, stroke_color=WHITE, **kwargs)
 
         def make_general_graph():
             g = Graph(scale_map({
@@ -944,7 +947,7 @@ class FourProblems(MyScene):
                 "D": [-sin(4*pi/5), -cos(  pi/5), 0],
                 "E": [-sin(2*pi/5),  cos(2*pi/5), 0],
                 "F": [0,             0,           0],
-            }, graph_scale), scale=graph_scale)
+            }, graph_scale), scale=graph_scale, unconnected_edge=solid_line)
 
             vertices = ["A", "B", "C", "D", "E"]
             for i in range(5):
@@ -963,7 +966,7 @@ class FourProblems(MyScene):
                 "D": [1.5, 0, 0],
                 "E": [1.5, 1, 0],
                 "F": [1.5, 2, 0],
-            }, graph_scale), scale=graph_scale)
+            }, graph_scale), scale=graph_scale, unconnected_edge=solid_line)
 
             for a in ["A", "B", "C"]:
                 for b in ["D", "E", "F"]:
@@ -986,10 +989,10 @@ class FourProblems(MyScene):
         unweighted = Tex("Unweighted").move_to([0, -grid_size, 0]).align_to(weighted, RIGHT)
 
         lines = [
-            Line([0.5 * grid_size, 0.5 * grid_size, 0], [0.5 * grid_size, -2.5 * grid_size, 0]),
-            Line([1.5 * grid_size, 0.5 * grid_size, 0], [1.5 * grid_size, -2.5 * grid_size, 0]),
-            Line([-0.5 * grid_size, -0.5 * grid_size, 0], [2.5 * grid_size, -0.5 * grid_size, 0]),
-            Line([-0.5 * grid_size, -1.5 * grid_size, 0], [2.5 * grid_size, -1.5 * grid_size, 0]),
+            Line([0.5 * grid_size, 0.5 * grid_size, 0], [0.5 * grid_size, -2.5 * grid_size, 0], stroke_width=6),
+            Line([1.5 * grid_size, 0.5 * grid_size, 0], [1.5 * grid_size, -2.5 * grid_size, 0], stroke_width=3),
+            Line([-0.5 * grid_size, -0.5 * grid_size, 0], [2.5 * grid_size, -0.5 * grid_size, 0], stroke_width=6),
+            Line([-0.5 * grid_size, -1.5 * grid_size, 0], [2.5 * grid_size, -1.5 * grid_size, 0], stroke_width=3),
         ]
         numbers = [
             MathTex("1", font_size=72).move_to([    grid_size,     -grid_size, 0]),
@@ -1009,18 +1012,45 @@ class FourProblems(MyScene):
         self.pause()
         self.play(general.apply_to_all(lambda x: Create(x, run_time=.5), lag_ratio=.1))
         self.pause()
+        self.play(bipartite.get_group().animate.shift(.25 * UP))
+        self.pause()
+        self.play(Write(
+            Tex(r"Bipartite", font_size=28).next_to(bipartite.get_group(), DOWN)
+        ))
+        self.pause()
+        self.play(general.get_group().animate.shift(.25 * UP))
+        self.pause()
+        self.play(Write(
+            Tex(r"General", font_size=28).next_to(general.get_group(), DOWN)
+        ))
+        self.pause()
         self.play(Write(unweighted))
+        self.pause()
+        self.play(unweighted.animate.shift(.35 * UP))
+        self.pause()
+        self.play(Write(
+            Tex(r"(Maximum cardinality)", font_size=28).next_to(unweighted, DOWN, aligned_edge=RIGHT)
+        ))
         self.pause()
         self.play(Write(weighted))
         self.pause()
-
-        self.play(Create(cursor))
+        self.play(weighted.animate.shift(.35 * UP))
+        self.pause()
+        self.play(Write(
+            Tex(r"(Maximum weight)", font_size=28).next_to(weighted, DOWN, aligned_edge=RIGHT)
+        ))
         self.pause()
 
         self.play(LaggedStart(
             *[Write(x) for x in numbers],
             lag_ratio=.4
         ))
+
+        self.play(Create(cursor))
+        self.pause()
+
+        self.play(cursor.animate.shift(RIGHT * grid_size))
+        self.pause()
 
 
 class AugmentingPath(MyScene):
@@ -1449,6 +1479,7 @@ class AugmentAlgorithmExample(MyScene):
         graph = _make_even_cycle_graph()
         graph.match("A", "B")
         graph.match("D", "E")
+        graph.update_matching(animated=False)
         graph.draw_points(self)
         graph.draw_edges(self)
         self.pause()
