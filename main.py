@@ -19,15 +19,15 @@ class MyScene(Scene):
 
 
 def get_bounding_rect(mobject, buff=0, **kwargs):
-    top = mobject.get_top()
-    bottom = mobject.get_bottom()
-    left = mobject.get_left()
-    right = mobject.get_right()
+    top = mobject.get_top()[1]
+    bottom = mobject.get_bottom()[1]
+    left = mobject.get_left()[0]
+    right = mobject.get_right()[0]
     points = [
-        [left - buff, top - buff, 1],
-        [right + buff, top - buff, 1],
-        [right + buff, bottom + buff, 1],
-        [left - buff, bottom + buff, 1],
+        [left - buff, top + buff, 1],
+        [right + buff, top + buff, 1],
+        [right + buff, bottom - buff, 1],
+        [left - buff, bottom - buff, 1],
     ]
     return Polygon(*points, **kwargs)
 
@@ -2461,6 +2461,91 @@ class BlossomShrinkingProof(MyScene):
         self.pause()
 
 
+class WeightedMatching(MyScene):
+    def construct(self):
+        vspace = 1.5
+        graph_points = {
+            "A": [0, 2 * vspace, 1],
+            "B": [0, vspace, 1],
+            "C": [0, 0, 1],
+            "X": [3, 1.5 * vspace, 1],
+            "Y": [3, .5 * vspace, 1],
+            #"Z": [3, 0, 1],
+        }
+        graph = Graph(graph_points)
+        graph.get_group().move_to(ORIGIN)
+
+        graph.add_edge("A", "X")
+        graph.add_edge("A", "Y")
+        graph.add_edge("B", "X")
+        graph.add_edge("C", "Y")
+
+        weights = [
+            MathTex("55", font_size=42).move_to(graph.points["X"].get_center() + .8 * UP + 1.5 * LEFT),
+            MathTex("45", font_size=42).move_to(graph.points["B"].get_center() + .6 * UP + .5 * RIGHT),
+            MathTex("89", font_size=42).move_to(graph.points["Y"].get_center() + .75 * UP + .3 * LEFT),
+            MathTex("60", font_size=42).move_to(graph.points["C"].get_center() + .8 * UP + 1.2 * RIGHT),
+        ]
+
+        circs = [ get_bounding_rect(x, buff=.1, stroke_color=YELLOW, stroke_width=5) for x in weights ]
+
+        equation = MathTex(
+            r"55 + 60 &= 115\\",
+            r"45 + 89 &= 134",
+            ).to_edge(RIGHT, buff=1)
+
+        graph.draw_points(self)
+        graph.draw_edges(self)
+        self.pause()
+        self.play(LaggedStart(
+            *[Write(x) for x in weights],
+            lag_ratio=.2
+            ))
+        self.pause()
+
+        graph.match("A", "X")
+        graph.match("C", "Y")
+        self.play(*graph.update_matching())
+        self.pause()
+
+        self.play(LaggedStart(
+            Create(circs[0]),
+            Create(circs[3]),
+            Write(equation[0]),
+            lag_ratio=.2
+            ))
+        self.pause()
+        
+        graph.unmatch("A", "X")
+        graph.unmatch("C", "Y")
+        self.play(
+            *graph.update_matching(),
+            FadeOut(circs[0]),
+            FadeOut(circs[3]),
+            )
+        self.pause()
+
+        
+        graph.match("B", "X")
+        graph.match("A", "Y")
+        self.play(*graph.update_matching())
+        self.pause()
+        
+        self.play(LaggedStart(
+            Create(circs[1]),
+            Create(circs[2]),
+            Write(equation[1]),
+            lag_ratio=.2
+            ))
+        self.pause()
+        
+
+        # self.play(graph.get_group().animate.to_edge(UP, buff=.7))
+        # self.pause()
+        
+
+
+
 class LinearProgrammingReframing(MyScene):
     def construct(self):
         vspace = 1.5
@@ -2468,15 +2553,15 @@ class LinearProgrammingReframing(MyScene):
             "A": [0, 2 * vspace, 1],
             "B": [0, vspace, 1],
             "C": [0, 0, 1],
-            "X": [3, 2 * vspace, 1],
-            "Y": [3, vspace, 1],
-            "Z": [3, 0, 1],
+            "X": [3, 1.5 * vspace, 1],
+            "Y": [3, .5 * vspace, 1],
+            #"Z": [3, 0, 1],
         }
-        graph = Graph(graph_points, unconnected_edge=lambda p1, p2: Line(p1, p2, stroke_width=5, stroke_color=WHITE))
+        graph = Graph(graph_points, unconnected_edge=lambda p1, p2, **kwargs: Line(p1, p2, stroke_width=5, stroke_color=WHITE, **kwargs))
         graph.get_group().move_to(ORIGIN).to_edge(UP, buff=.7)
 
         for a in ["A", "B", "C"]:
-            for x in ["X", "Y", "Z"]:
+            for x in ["X", "Y"]:
                 graph.add_edge(a, x)
         
         graph.draw_points(self)
@@ -3033,24 +3118,3 @@ class LinearProgrammingGraph(MyScene):
         self.pause()
 
 
-class Presentation2(MyScene):
-    def construct(self):
-        slides = [
-            StableMatching,
-            StableVsMaximumTable,
-            MaximumMatchingIntro,
-            FourProblems,
-            AugmentingPath,
-            MaximumImpliesNoAP,
-            NoAPImpliesMaximum,
-            AugmentAlgorithm,
-            AugmentAlgorithmExample,
-            AugmentAlgorithmCounterexample,
-            BipartiteAnimation,
-            Blossom
-        ]
-
-        for s in slides:
-            s.construct(self)
-            self.clear()
-            self.pause()
