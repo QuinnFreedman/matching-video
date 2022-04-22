@@ -2588,15 +2588,28 @@ class LinearProgrammingReframing(MyScene):
             "Y": [3, .5 * vspace, 1],
             #"Z": [3, 0, 1],
         }
-        graph = Graph(graph_points, unconnected_edge=lambda p1, p2, **kwargs: Line(p1, p2, stroke_width=5, stroke_color=WHITE, **kwargs))
+        graph = Graph(graph_points) #, unconnected_edge=lambda p1, p2, **kwargs: Line(p1, p2, stroke_width=5, stroke_color=WHITE, **kwargs))
         graph.get_group().move_to(ORIGIN).to_edge(UP, buff=.7)
 
-        for a in ["A", "B", "C"]:
-            for x in ["X", "Y"]:
-                graph.add_edge(a, x)
-        
+        graph.add_edge("A", "X")
+        graph.add_edge("A", "Y")
+        graph.add_edge("B", "X")
+        graph.add_edge("C", "Y")
+
+        weights = [
+            MathTex("55", font_size=42).move_to(graph.points["X"].get_center() + .8 * UP + 1.5 * LEFT),
+            MathTex("45", font_size=42).move_to(graph.points["B"].get_center() + .6 * UP + .5 * RIGHT),
+            MathTex("89", font_size=42).move_to(graph.points["Y"].get_center() + .75 * UP + .3 * LEFT),
+            MathTex("60", font_size=42).move_to(graph.points["C"].get_center() + .8 * UP + 1.2 * RIGHT),
+        ]
+
+        graph.match("A", "Y")
+        graph.match("B", "X")
+        graph.update_matching(animated=False)
         graph.draw_points(self)
         graph.draw_edges(self)
+        for w in weights:
+            self.add(w)
         self.pause()
 
         tex = MathTex(
@@ -2610,13 +2623,27 @@ class LinearProgrammingReframing(MyScene):
         self.play(AnimationGroup(*[FadeIn(x) for x in tex[:5]]))
         self.pause()
 
-        self.play(Indicate(tex[2]))
+        self.play(
+            Indicate(tex[2]),
+            *[Indicate(w) for w in weights]
+            )
         self.pause()
-        self.play(Indicate(tex[3]))
+        self.play(
+            Indicate(tex[3]),
+            Indicate(graph.lines[("A", "Y")]),
+            Indicate(graph.lines[("B", "X")]),
+            )
         self.pause()
-        self.play(Indicate(VGroup(*tex[2:4])))
+        self.play(
+            Indicate(VGroup(*tex[2:4])),
+            Indicate(weights[1]),
+            Indicate(weights[2]),
+            )
         self.pause()
-        self.play(Indicate(tex[1]))
+        self.play(
+            Indicate(tex[1]),
+            *[Indicate(line) for line in graph.lines.values()]
+            )
         self.pause()
 
         self.play(AnimationGroup(*[FadeIn(x) for x in tex[5:10]]))
@@ -2624,6 +2651,11 @@ class LinearProgrammingReframing(MyScene):
         self.play(Indicate(tex[9]))
         self.pause()
         self.play(Circumscribe(tex[6:9]))
+        self.pause()
+        self.play(LaggedStart(
+            *(Indicate(x) for x in graph.points.values()),
+            lag_ratio=.15
+        ))
         self.pause()
         self.play(Indicate(tex[7]))
         self.pause()
@@ -3149,3 +3181,66 @@ class LinearProgrammingGraph(MyScene):
         self.pause()
 
 
+class LPRelaxation(MyScene):
+    def construct(self):
+        original = MathTex(
+            r"\textrm{max } & ", r"\sum\nolimits_{e\in E}{w_e x_e}\\",
+            r"\textrm{s.t. } & ", r"\sum\nolimits_{e\in E:v \in e}{x_e} \le 1 \textrm{ }", r"\forall v \in V\\",
+            r"\textrm{and } & ", r"x_e \in ", r"\{", r"0, 1", r"\}", r" \textrm{ }\forall e \in E\\",
+        ).to_edge(UP, 1)
+        self.add(original)
+        self.pause()
+        self.play(original.animate.to_edge(LEFT, .5))
+        self.pause()
+
+        longform = MathTex(
+            r"&w_1 x_1 + w_2 x_2 + w_3 x_3 + \cdots\\",
+            r"&x_{01} + x_{02} + x_{02} + \cdots \le 1\\",
+            r"&x_{11} + x_{12} + x_{12} + \cdots \le 1\\",
+            r"&x_{21} + x_{22} + x_{22} + \cdots \le 1\\",
+            r"&\cdots\\",
+            r"&0 \le x_{1} \le 1\\",
+            r"&0 \le x_{2} \le 1\\",
+            r"&0 \le x_{3} \le 1\\",
+            r"&\cdots\\",
+        ).next_to(original, RIGHT, aligned_edge=UP)
+
+        self.play(Transform(original[1].copy(), longform[0]))
+        self.pause()
+        self.play(Transform(original[3].copy(), longform[1]))
+        self.pause()
+        self.play(Transform(original[3].copy(), longform[2]))
+        self.pause()
+        self.play(Transform(original[3].copy(), longform[3]))
+        self.pause()
+        self.play(Transform(original[3].copy(), longform[4]))
+        self.pause()
+        x_in_01 = original[6:10]
+        self.play(Circumscribe(x_in_01))
+        self.pause()
+        lh = .7
+        new_x_bound = [
+            original[6].copy(),
+            original[8].copy(),
+            original[7].copy(),
+            original[9].copy(),
+        ]
+        self.play(
+            new_x_bound[0].animate.shift(DOWN * lh),
+            new_x_bound[1].animate.shift(DOWN * lh),
+            Transform(new_x_bound[2], MathTex(r"[").move_to(original[7]).shift(DOWN * lh)),
+            Transform(new_x_bound[3], MathTex(r"]").move_to(original[9]).shift(DOWN * lh)),
+        )
+        self.pause()
+        strike = Line(
+            [x_in_01.get_left()[0], x_in_01.get_bottom()[1], 1],
+            [x_in_01.get_right()[0], x_in_01.get_top()[1], 1],
+            stroke_color=YELLOW
+        )
+        self.play(Create(strike))
+        self.pause()
+        
+        for i in range(4):
+            self.play(Transform(VGroup(*new_x_bound).copy(), longform[5 + i]))
+            self.pause()
+        self.pause()
