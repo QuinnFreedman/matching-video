@@ -1058,8 +1058,27 @@ class AugmentingPath(MyScene):
         graph = _make_even_cycle_graph()
         graph.draw_points(self)
         graph.draw_edges(self)
-
         self.pause()
+
+        vert = Tex("Vertices", color=RED)
+        edges = Tex("Edges", color=GREEN)
+        VGroup(vert, edges).arrange(DOWN, aligned_edge=LEFT).next_to(graph.get_group(), RIGHT, buff=.5)
+
+        self.play(
+            Indicate(VGroup(*graph.points.values()), color=RED, scale_factor=1.1, length=2),
+            FadeIn(vert)
+        )
+        self.pause()
+        self.play(
+            Indicate(VGroup(*graph.lines.values()), color=GREEN, scale_factor=1.1, length=2),
+            FadeIn(edges)
+        )
+        self.pause()
+
+        self.play(
+            FadeOut(edges),
+            FadeOut(vert),
+            )
 
         graph.match("B", "C")
         graph.match("D", "E")
@@ -1087,13 +1106,13 @@ class AugmentingPath(MyScene):
         
         self.pause()
         
-        self.play(graph.shift(np.array([-4, 0, 0])))
+        self.play(graph.shift(4 * LEFT))
 
         self.pause()
 
         text = [
             MarkupText("Augmenting Path", font_size=32),
-            MarkupText("• Path on <i>G = (V, E)</i> with respect to matching <i>M</i>", font_size=24),
+            MarkupText("• Path on <i>G = (V, E)</i> w.r.t. some matching <i>M</i>", font_size=24),
             MarkupText("• Begins and ends on unmatched vertices", font_size=24),
             MarkupText("• Alternates edges in <i>M</i> and not in <i>M</i>", font_size=24),
             MarkupText("∴ Must be odd length", font_size=24),
@@ -1120,9 +1139,15 @@ class AugmentingPath(MyScene):
         self.pause()
         self.play(Create(paths[1]))
         self.pause()
-        self.play(Circumscribe(Dot(radius=1).move_to(graph.lines[("A", "B")].get_center()), shape=Circle, color=BLUE))
+        # self.play(Circumscribe(Dot(radius=1).move_to(graph.lines[("A", "B")].get_center()), shape=Circle, color=BLUE))
+        # self.pause()
+        # self.play(Circumscribe(Dot(radius=1).move_to(graph.lines[("E", "F")].get_center()), shape=Circle, color=BLUE))
+        # self.pause()
+        self.play(Circumscribe(Dot(radius=.25).move_to(graph.points["A"].get_center()), shape=Circle, color=BLUE))
         self.pause()
-        self.play(Circumscribe(Dot(radius=1).move_to(graph.lines[("E", "F")].get_center()), shape=Circle, color=BLUE))
+        self.play(Circumscribe(Dot(radius=.25).move_to(graph.points["F"].get_center()), shape=Circle, color=BLUE))
+        self.pause()
+        self.play(Indicate(VGroup(graph.lines[("B", "C")], graph.lines[("D", "E")]), color=BLUE))
         self.pause()
 
         self.play(FadeIn(text[-1]))
