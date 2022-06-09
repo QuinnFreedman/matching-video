@@ -5,6 +5,7 @@ from manim.mobject.opengl_compatibility import ConvertToOpenGL
 # from manim_presentation import Slide #as MyScene
 from typing import Callable, Iterable, Optional, Sequence
 from math import sin, cos, pi, sqrt
+import numpy as np
 
 
 # class MyScene(Slide):
@@ -3398,13 +3399,78 @@ class LinearProgrammingReframing(MyScene):
             ),
         ]
 
+        sum = MathTex("55", "+", "60", "=", "115", font_size=42, color=YELLOW).next_to(
+            graph.get_group(), DOWN
+        )
+
+        self.play(FadeIn(graph.get_group()), *[FadeIn(w) for w in weights])
+
+        self.pause()
+        graph.match("A", "X")
+        graph.match("C", "Y")
+        self.play(*graph.update_matching())
+        self.pause()
+
+        self.play(
+            weights[0].animate.set_fill(color=YELLOW),
+            weights[3].animate.set_fill(color=YELLOW),
+        )
+        self.pause()
+
+        weights_0_copy = weights[0].copy()
+        weights_3_copy = weights[3].copy()
+
+        self.play(
+            LaggedStart(
+                weights_0_copy.animate.move_to(sum[0]),
+                weights_3_copy.animate.move_to(sum[2]),
+                FadeIn(VGroup(sum[1], sum[3], sum[4])),
+            )
+        )
+        self.pause()
+
+        graph.unmatch("A", "X")
+        graph.unmatch("C", "Y")
         graph.match("A", "Y")
         graph.match("B", "X")
-        graph.update_matching(animated=False)
-        graph.draw_points(self)
-        graph.draw_edges(self)
-        for w in weights:
-            self.add(w)
+
+        self.play(
+            *graph.update_matching(),
+            weights[0].animate.set_fill(color=WHITE),
+            weights[3].animate.set_fill(color=WHITE),
+        )
+        self.pause()
+
+        self.play(
+            weights[1].animate.set_fill(color=YELLOW),
+            weights[2].animate.set_fill(color=YELLOW),
+        )
+        self.pause()
+
+        weights_1_copy = weights[1].copy()
+        weights_2_copy = weights[2].copy()
+        self.play(
+            LaggedStart(
+                FadeOut(weights_0_copy),
+                FadeOut(weights_3_copy),
+                weights_1_copy.animate.move_to(sum[0]),
+                weights_2_copy.animate.move_to(sum[2]),
+                Transform(
+                    sum[4], MathTex("134", font_size=42, color=YELLOW).move_to(sum[4])
+                ),
+            )
+        )
+        self.pause()
+
+        self.play(
+            FadeOut(sum[1]),
+            FadeOut(sum[3]),
+            FadeOut(sum[4]),
+            FadeOut(weights_1_copy),
+            FadeOut(weights_2_copy),
+            weights[1].animate.set_fill(color=WHITE),
+            weights[2].animate.set_fill(color=WHITE),
+        )
         self.pause()
 
         tex = MathTex(
@@ -4142,7 +4208,7 @@ class LPRelaxation(MyScene):
         ).to_edge(UP, 1)
         self.add(original)
         self.pause()
-        self.play(original.animate.to_edge(LEFT, 0.5))
+        self.play(original.animate.to_edge(LEFT, 0.7))
         self.pause()
 
         longform = MathTex(
@@ -4155,10 +4221,23 @@ class LPRelaxation(MyScene):
             r"&0 \le x_{2} \le 1\\",
             r"&0 \le x_{3} \le 1\\",
             r"&\cdots\\",
-        ).next_to(original, RIGHT, aligned_edge=UP)
+        ).next_to(original, RIGHT, aligned_edge=UP, buff=0.6)
+
+        cursor = (
+            Triangle(fill_color=YELLOW, fill_opacity=1, stroke_width=0)
+            .rotate(-90 * DEGREES)
+            .scale(0.22)
+            .next_to(original[0], LEFT, buff=0.2)
+        )
+        self.play(FadeIn(cursor))
+        self.pause()
 
         self.play(Transform(original[1].copy(), longform[0]))
         self.pause()
+
+        self.play(cursor.animate.next_to(original[2], LEFT, buff=0.2))
+        self.pause()
+
         self.play(Transform(original[3].copy(), longform[1]))
         self.pause()
         self.play(Transform(original[3].copy(), longform[2]))
@@ -4167,6 +4246,10 @@ class LPRelaxation(MyScene):
         self.pause()
         self.play(Transform(original[3].copy(), longform[4]))
         self.pause()
+
+        self.play(cursor.animate.next_to(original[5], LEFT, buff=0.2))
+        self.pause()
+
         x_in_01 = original[6:10]
         self.play(Circumscribe(x_in_01))
         self.pause()
@@ -4199,4 +4282,65 @@ class LPRelaxation(MyScene):
         for i in range(4):
             self.play(Transform(VGroup(*new_x_bound).copy(), longform[5 + i]))
             self.pause()
+        self.pause()
+
+        self.play(FadeOut(cursor))
+        self.pause()
+
+        top_left = np.array([longform[0].get_left()[0], longform[0].get_top()[1], 1])
+
+        variables_arrow = Arrow(
+            top_left + 0.5 * UP, top_left + 0.5 * UP + 5 * RIGHT, color=YELLOW, buff=0
+        )
+        self.play(GrowArrow(variables_arrow))
+        self.pause()
+
+        constraints_arrow = Arrow(
+            top_left + 0.5 * LEFT,
+            top_left + 0.5 * LEFT + 6.5 * DOWN,
+            color=YELLOW,
+            buff=0,
+        )
+        self.play(GrowArrow(constraints_arrow))
+        self.pause()
+        self.pause()
+
+
+class LPIntegrality(MyScene):
+    def construct(self):
+        claim = Tex(
+            r"\raggedright Claim:\\\hspace{.3cm}",
+            r"At least one solution to the relaxed\\\hspace{.3cm}maximum-matching linear program\\\hspace{.3cm}will be integral ",
+            r"if the graph is bipartite",
+        )
+        for line in claim:
+            self.play(Write(line))
+            self.pause()
+
+        self.play(claim.animate.shift(UP * 5.25))
+        self.remove(claim)
+        self.pause()
+
+        perfect_matching_tex = Tex("perfect matching", font_size=64)
+        max_weight_tex = Tex("maximum-weight", font_size=64)
+        perf_matching_tex_grpup = VGroup(max_weight_tex, perfect_matching_tex).arrange(
+            RIGHT
+        )
+        perfect_matching_tex_pos = perfect_matching_tex.get_center()
+        perfect_matching_tex.move_to(ORIGIN)
+
+        self.play(Write(perfect_matching_tex))
+        self.pause()
+
+        self.play(
+            LaggedStart(
+                perfect_matching_tex.animate.move_to(perfect_matching_tex_pos),
+                FadeIn(max_weight_tex),
+                lag_ratio=0.5,
+            )
+        )
+        self.pause()
+
+        self.play(perf_matching_tex_grpup.animate.shift(UP * 5.25))
+        self.remove(perf_matching_tex_grpup)
         self.pause()
