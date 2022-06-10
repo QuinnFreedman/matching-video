@@ -42,7 +42,7 @@ class IndicateEdges(Transform):
         scale_factor: float = 1.2,
         color: str = YELLOW,
         rate_func: Callable[[float, Optional[float]], np.ndarray] = there_and_back,
-        **kwargs
+        **kwargs,
     ) -> None:
         self.color = color
         self.scale_factor = scale_factor
@@ -61,7 +61,7 @@ class Blink(Transform):
         mobject: "Mobject",
         opacity=1,
         rate_func: Callable[[float, Optional[float]], np.ndarray] = there_and_back,
-        **kwargs
+        **kwargs,
     ) -> None:
         self.opacity = opacity
         super().__init__(mobject, rate_func=rate_func, **kwargs)
@@ -4343,4 +4343,135 @@ class LPIntegrality(MyScene):
 
         self.play(perf_matching_tex_grpup.animate.shift(UP * 5.25))
         self.remove(perf_matching_tex_grpup)
+        self.pause()
+
+        graph_size = 2.5
+        graph_points = {
+            "A": [0, graph_size, 0],
+            "B": [0, 0, 0],
+            "X": [graph_size, graph_size, 0],
+            "Y": [graph_size, 0, 0],
+        }
+        max_matching = Graph(graph_points)
+        max_matching.add_edge("A", "X")
+        max_matching.add_edge("A", "Y")
+        max_matching.add_edge("B", "Y")
+
+        max_perf_matching = Graph(graph_points)
+        max_perf_matching.add_edge("A", "X")
+        max_perf_matching.add_edge("A", "Y")
+        max_perf_matching.add_edge("B", "Y")
+
+        max_matching.get_group().move_to(ORIGIN + DOWN * 0.6)
+        max_perf_matching.get_group().move_to(ORIGIN + DOWN * 0.6)
+
+        weights = [
+            MathTex("20").move_to(
+                max_matching.lines[("A", "X")].get_center() + 0.35 * UP
+            ),
+            MathTex("30").move_to(
+                max_matching.lines[("B", "Y")].get_center() + 0.35 * DOWN
+            ),
+            MathTex("70").move_to(
+                max_matching.lines[("A", "Y")].get_center() + 0.25 * (UP + RIGHT)
+            ),
+        ]
+
+        weights2 = [w.copy() for w in weights]
+
+        self.play(
+            FadeIn(max_matching.get_group()),
+            FadeIn(max_perf_matching.get_group()),
+            *[FadeIn(x) for x in weights],
+            *[FadeIn(x) for x in weights2],
+        )
+        self.play(
+            VGroup(max_matching.get_group(), *weights).animate.shift(LEFT * 3),
+            VGroup(max_perf_matching.get_group(), *weights2).animate.shift(RIGHT * 3),
+        )
+        self.pause()
+
+        max_matching_text = Tex("Maximum Matching").next_to(
+            max_matching.get_group(), UP, buff=1.5
+        )
+        max_perf_matching_text = Tex("Max Perfect Matching").next_to(
+            max_perf_matching.get_group(), UP, buff=1.5
+        )
+
+        self.play(FadeIn(max_matching_text), FadeIn(max_perf_matching_text))
+        self.pause()
+
+        max_matching.match("A", "Y")
+        max_perf_matching.match("A", "X")
+        max_perf_matching.match("B", "Y")
+        self.play(
+            *max_matching.update_matching(),
+            *max_perf_matching.update_matching(),
+        )
+        self.pause()
+
+        max_perf_matching_copy = Graph(graph_points)
+        max_perf_matching_copy.add_edge("A", "X")
+        max_perf_matching_copy.add_edge("A", "Y")
+        max_perf_matching_copy.add_edge("B", "Y")
+        max_perf_matching_copy.get_group().move_to(max_perf_matching.get_group())
+        self.play(FadeIn(max_perf_matching_copy.get_group(), width=0.1))
+        shift = 1 * UP + RIGHT
+        self.play(max_perf_matching_copy.get_group().animate.shift(shift))
+
+        self.pause()
+
+        new_edges = []
+
+        for p in graph_points.keys():
+            new_point = p * 2
+            max_perf_matching.add_point(
+                new_point, max_perf_matching.points[p].get_center() + shift, hidden=True
+            )
+            max_perf_matching.add_edge(p, new_point)
+            new_edges.append(max_perf_matching.lines[(p, new_point)])
+
+        self.play(*[GrowFromCenter(line) for line in new_edges])
+        self.pause()
+
+        zeros = [
+            MathTex("0").move_to(
+                max_perf_matching.lines[("A", "AA")].get_center() + 0.25 * (LEFT + UP)
+            ),
+            MathTex("0").move_to(
+                max_perf_matching.lines[("B", "BB")].get_center() + 0.25 * (LEFT + UP)
+            ),
+            MathTex("0").move_to(
+                max_perf_matching.lines[("X", "XX")].get_center()
+                + 0.25 * (RIGHT + DOWN)
+            ),
+            MathTex("0").move_to(
+                max_perf_matching.lines[("Y", "YY")].get_center()
+                + 0.25 * (RIGHT + DOWN)
+            ),
+        ]
+        self.play(*[FadeIn(x) for x in zeros])
+        self.pause()
+
+        max_perf_matching.unmatch("A", "X")
+        max_perf_matching.unmatch("B", "Y")
+        max_perf_matching.match("A", "Y")
+        max_perf_matching.match("B", "BB")
+        max_perf_matching.match("X", "XX")
+        max_perf_matching_copy.match("A", "Y")
+        self.play(
+            *max_perf_matching_copy.update_matching(),
+            *max_perf_matching.update_matching(),
+        )
+        self.pause()
+
+        self.play(
+            VGroup(
+                max_perf_matching_copy.get_group(),
+                *zeros,
+                *[max_perf_matching.lines[(p, p * 2)] for p in graph_points.keys()],
+                *[max_perf_matching.points[p * 2] for p in graph_points.keys()],
+            ).animate.set_opacity(0.3)
+        )
+        self.pause()
         self.pause()
