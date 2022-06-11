@@ -137,7 +137,7 @@ class Graph:
         edges = [
             self.lines[e] for e in self.edges if e[0] in vertices and e[1] in vertices
         ]
-        return Group(*edges, *points)
+        return VGroup(*edges, *points)
 
     def draw_points(self, scene):
         scene.add(*self.points.values())
@@ -4473,5 +4473,223 @@ class LPIntegrality(MyScene):
                 *[max_perf_matching.points[p * 2] for p in graph_points.keys()],
             ).animate.set_opacity(0.3)
         )
+        self.pause()
+
+        tex = Tex(
+            r"$\sum_{e\in E : v \in e}x_e$ ",
+            r"$\le$",
+            r" $1 \textrm{ } \forall v \in V$",
+        ).to_edge(DOWN)
+        self.play(FadeIn(tex))
+        self.pause()
+        self.play(Transform(tex[1], MathTex("=").move_to(tex[1])))
+        self.pause()
+        self.pause()
+
+
+class LPIntegralityProof(MyScene):
+    def construct(self):
+        x_star = MathTex(
+            r"x^* ",
+            r"= \{",
+            "x_0",
+            ",",
+            "x_1",
+            ",",
+            "x_2",
+            ",",
+            "x_3",
+            r",\hdots \}",
+        ).to_edge(UP)
+        self.add(x_star)
+        self.pause()
+        line_height = 0.8
+        number_line_height = 0.75
+        self.play(
+            x_star[1].copy().animate.shift(line_height * DOWN),
+            Transform(
+                x_star[2].copy(),
+                MathTex("0").move_to(x_star[2]).shift(number_line_height * DOWN),
+            ),
+            x_star[3].copy().animate.shift(line_height * DOWN),
+            Transform(
+                x_star[4].copy(),
+                MathTex("1").move_to(x_star[4]).shift(number_line_height * DOWN),
+            ),
+            x_star[5].copy().animate.shift(line_height * DOWN),
+            Transform(
+                x_star[6].copy(),
+                MathTex("1").move_to(x_star[6]).shift(number_line_height * DOWN),
+            ),
+            x_star[7].copy().animate.shift(line_height * DOWN),
+            Transform(
+                x_star[8].copy(),
+                MathTex("0").move_to(x_star[8]).shift(number_line_height * DOWN),
+            ),
+            x_star[9].copy().animate.shift(line_height * DOWN),
+        )
+        self.pause()
+        definitions = MathTex(
+            r"w(x^*) =& \sum_{e\in E}{x^*_e w_e} \\",
+            r"k(x^*) =& ||\{x\in x^* : x \in \mathbb{Z}\}||",
+        ).next_to(x_star, DOWN, buff=1.8)
+        self.play(Write(definitions[0]))
+        self.pause()
+        self.play(Write(definitions[1]))
+        self.pause()
+        x_tilde = MathTex(
+            r"\textrm{find } \tilde{x} \textrm{ s.t.:} \\",
+            r"w(\tilde{x}) &= w(x^*) \\",
+            r"k(\tilde{x}) &> k(x^*)",
+        ).next_to(definitions, DOWN, buff=0.8)
+        self.play(Write(x_tilde[0]))
+        self.pause()
+        self.play(Write(x_tilde[1]))
+        self.pause()
+        self.play(Write(x_tilde[2]))
+        self.pause()
+        self.play(Circumscribe(x_tilde[0]))
+        self.pause()
+        self.pause()
+
+
+class LPIntegralityProofGraph(MyScene):
+    def construct(self):
+        hspace = 2.5
+        vspace = 2.5
+        shift = hspace / 2 * LEFT + vspace / 2 * UP
+        graph_points = {
+            "A": np.array([0, 0, 0]) + shift,
+            "B": np.array([0, -vspace, 0]) + shift,
+            "C": np.array([hspace, 0, 0]) + shift,
+            "D": np.array([hspace, -vspace, 0]) + shift,
+            "E": np.array([2 * hspace, 0, 0]) + shift,
+            "F": np.array([2 * hspace, -vspace, 0]) + shift,
+            "G": np.array([-hspace, 0, 0]) + shift,
+            "H": np.array([-hspace, -vspace, 0]) + shift,
+        }
+        graph = Graph(graph_points)
+        graph.add_edge("A", "B")
+        graph.match("A", "B")
+        graph.add_edge("C", "D")
+        graph.match("C", "D")
+        graph.add_edge("E", "F")
+        graph.match("E", "F")
+        graph.add_edge("G", "H")
+        graph.match("G", "H")
+        graph.add_edge("B", "C")
+        graph.match("B", "C")
+        graph.add_edge("C", "F")
+        graph.match("C", "F")
+        graph.add_edge("D", "E")
+        graph.match("D", "E")
+        graph.add_edge("D", "G")
+        graph.match("D", "G")
+        graph.add_edge("H", "A")
+        graph.match("H", "A")
+        graph.update_matching(animated=False)
+
+        labels = [
+            Tex("A").next_to(graph.points["A"], UP),
+            Tex("C").next_to(graph.points["C"], UP),
+            Tex("E").next_to(graph.points["E"], UP),
+            Tex("G").next_to(graph.points["G"], UP),
+            Tex("B").next_to(graph.points["B"], DOWN),
+            Tex("D").next_to(graph.points["D"], DOWN),
+            Tex("F").next_to(graph.points["F"], DOWN),
+            Tex("H").next_to(graph.points["H"], DOWN),
+        ]
+
+        x_ab = MathTex(".7").move_to(
+            graph.lines[("A", "B")].get_center() + 0.5 * UP + 0.4 * RIGHT
+        )
+        x_bc = MathTex(".3").move_to(
+            graph.lines[("B", "C")].get_center() + 0.9 * UP + 0.3 * RIGHT
+        )
+        x_cf = MathTex(".1").move_to(
+            graph.lines[("C", "F")].get_center() + 0.9 * UP + 0.3 * LEFT
+        )
+        x_de = MathTex(".1").move_to(
+            graph.lines[("D", "E")].get_center() + 0.9 * DOWN + 0.35 * LEFT
+        )
+        x_ef = MathTex(".9").move_to(
+            graph.lines[("E", "F")].get_center() + 0.1 * UP + 0.4 * RIGHT
+        )
+        x_cd = MathTex(".6").move_to(
+            graph.lines[("C", "D")].get_center() + 0.1 * DOWN + 0.4 * LEFT
+        )
+        x_ah = MathTex(".3").move_to(
+            graph.lines[("A", "H")].get_center() + 0.9 * DOWN + 0.35 * LEFT
+        )
+        x_gh = MathTex(".4").move_to(graph.lines[("G", "H")].get_center() + 0.4 * LEFT)
+        x_gd = MathTex(".3").move_to(
+            graph.points["G"].get_center() + 0.15 * DOWN + 1.1 * RIGHT
+        )
+
+        xs = [x_ab, x_bc, x_cf, x_de, x_ef, x_cd, x_ah, x_gh, x_gd]
+
+        import random
+
+        random.seed(0)
+
+        edges = list(graph.lines.values())
+        vertices = list(graph.points.values())
+        random.shuffle(edges)
+        random.shuffle(vertices)
+        self.play(
+            LaggedStart(
+                *[GrowFromCenter(v) for v in vertices],
+                *[GrowFromCenter(e) for e in edges],
+                *[GrowFromCenter(x) for x in labels],
+                *[GrowFromCenter(x) for x in xs],
+            )
+        )
+        self.pause()
+
+        ab = graph.highlight_path("A", "B")
+        self.play(GrowFromPoint(ab, graph_points["A"]))
+        self.pause()
+        self.play(Circumscribe(x_ab, shape=Circle))
+        self.pause()
+        self.play(*[Indicate(x, scale_factor=1.1) for x in xs])
+        self.pause()
+        self.play(Circumscribe(VGroup(labels[4], graph.points["B"]), shape=Circle))
+        self.pause()
+        bc = graph.highlight_path("B", "C")
+        self.play(GrowFromPoint(bc, graph_points["B"]))
+        self.pause()
+        cd = graph.highlight_path("C", "D")
+        self.play(GrowFromPoint(cd, graph_points["C"]))
+        self.pause()
+        de = graph.highlight_path("D", "E")
+        self.play(GrowFromPoint(de, graph_points["D"]))
+        self.pause()
+        ef = graph.highlight_path("E", "F")
+        self.play(GrowFromPoint(ef, graph_points["E"]))
+        self.pause()
+        fc = graph.highlight_path("F", "C")
+        self.play(GrowFromPoint(fc, graph_points["F"]))
+        self.pause()
+
+        self.play(
+            FadeOut(ab),
+            FadeOut(bc),
+            VGroup(
+                graph.get_sub_group(["A", "B", "G", "H"]),
+                graph.lines[("D", "G")],
+                graph.lines[("B", "C")],
+                labels[0],
+                labels[3],
+                labels[4],
+                labels[7],
+                x_ab,
+                x_bc,
+                x_gd,
+                x_ah,
+                x_gh,
+            ).animate.set_opacity(0.3),
+        )
+
+        self.pause()
         self.pause()
         self.pause()
