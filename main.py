@@ -4621,7 +4621,7 @@ class LPIntegralityProofGraph(MyScene):
         x_ah = MathTex(".3").move_to(
             graph.lines[("A", "H")].get_center() + 0.9 * DOWN + 0.35 * LEFT
         )
-        x_gh = MathTex(".4").move_to(graph.lines[("G", "H")].get_center() + 0.4 * LEFT)
+        x_gh = MathTex(".7").move_to(graph.lines[("G", "H")].get_center() + 0.4 * LEFT)
         x_gd = MathTex(".3").move_to(
             graph.points["G"].get_center() + 0.15 * DOWN + 1.1 * RIGHT
         )
@@ -4653,11 +4653,22 @@ class LPIntegralityProofGraph(MyScene):
         self.pause()
         self.play(*[Indicate(x, scale_factor=1.1) for x in xs])
         self.pause()
+
+        perfect_definition = MathTex(
+            r"\sum_{e\in E : v \in e}x_e = 1 \textrm{ } \forall v \in V",
+        ).to_edge(DOWN)
+        self.play(FadeIn(perfect_definition))
+        self.pause()
+
         self.play(Circumscribe(VGroup(labels[4], graph.points["B"]), shape=Circle))
         self.pause()
         bc = graph.highlight_path("B", "C")
         self.play(GrowFromPoint(bc, graph_points["B"]))
         self.pause()
+
+        self.play(FadeOut(perfect_definition))
+        self.pause()
+
         cd = graph.highlight_path("C", "D")
         self.play(GrowFromPoint(cd, graph_points["C"]))
         self.pause()
@@ -4671,24 +4682,196 @@ class LPIntegralityProofGraph(MyScene):
         self.play(GrowFromPoint(fc, graph_points["F"]))
         self.pause()
 
+        left_half = VGroup(
+            graph.get_sub_group(["A", "B", "G", "H"]),
+            graph.lines[("D", "G")],
+            graph.lines[("B", "C")],
+            labels[0],
+            labels[3],
+            labels[4],
+            labels[7],
+            x_ab,
+            x_bc,
+            x_gd,
+            x_ah,
+            x_gh,
+        )
         self.play(
             FadeOut(ab),
             FadeOut(bc),
-            VGroup(
-                graph.get_sub_group(["A", "B", "G", "H"]),
-                graph.lines[("D", "G")],
-                graph.lines[("B", "C")],
-                labels[0],
-                labels[3],
-                labels[4],
-                labels[7],
-                x_ab,
-                x_bc,
-                x_gd,
-                x_ah,
-                x_gh,
-            ).animate.set_opacity(0.3),
+            left_half.animate.set_opacity(0.3),
         )
+        self.pause()
+
+        x_cd_original = x_cd.copy()
+        x_ef_original = x_ef.copy()
+        x_de_original = x_de.copy()
+        x_cf_original = x_cf.copy()
+
+        self.play(
+            Transform(x_cd, MathTex(".7").move_to(x_cd)),
+            Transform(x_ef, MathTex("1").move_to(x_ef)),
+            Transform(x_de, MathTex("0").move_to(x_de)),
+            Transform(x_cf, MathTex("0").move_to(x_cf)),
+        )
+        self.pause()
+        self.play(
+            Transform(x_cd, x_cd_original),
+            Transform(x_ef, x_ef_original),
+            Transform(x_de, x_de_original),
+            Transform(x_cf, x_cf_original),
+        )
+        self.pause()
+
+        epsilon = MathTex(r"\varepsilon", font_size=52).to_edge(DOWN, buff=1)
+        epsilon_equals = MathTex(r"\varepsilon", " = ", ".1", font_size=52).to_edge(
+            DOWN, buff=1
+        )
+
+        self.play(FadeIn(epsilon))
+        self.pause()
+        self.play(
+            epsilon.animate.move_to(epsilon_equals[0]),
+            FadeIn(epsilon_equals[1]),
+            FadeIn(epsilon_equals[2]),
+        )
+        self.pause()
+
+        self.play(
+            Transform(
+                epsilon_equals[2],
+                MathTex("-.05").move_to(epsilon_equals[2], aligned_edge=LEFT),
+            )
+        )
+        self.pause()
+        self.play(
+            Transform(
+                epsilon_equals[2],
+                MathTex("?").move_to(epsilon_equals[2], aligned_edge=LEFT),
+            )
+        )
+        self.pause()
+
+        x_cd_e = MathTex(r"+\varepsilon").next_to(x_cd, RIGHT).shift(0.8 * LEFT)
+        x_de_e = MathTex(r"-\varepsilon").next_to(x_de, RIGHT).shift(0.15 * LEFT)
+        x_ef_e = MathTex(r"+\varepsilon").next_to(x_ef, RIGHT).shift(0.15 * LEFT)
+        x_cf_e = MathTex(r"-\varepsilon").next_to(x_cf, RIGHT).shift(0.15 * LEFT)
+        self.play(
+            x_cd.animate.shift(0.65 * LEFT),
+            FadeIn(x_cd_e),
+        )
+        self.play(FadeIn(x_de_e))
+        self.play(FadeIn(x_ef_e))
+        self.play(FadeIn(x_cf_e))
+        self.pause()
+
+        graph_and_annotations = Group(
+            graph.get_group(),
+            *xs,
+            *labels,
+            x_cd_e,
+            x_de_e,
+            x_ef_e,
+            x_cf_e,
+            cd,
+            de,
+            ef,
+            fc,
+        )
+        self.play(
+            FadeOut(epsilon),
+            FadeOut(epsilon_equals[1]),
+            FadeOut(epsilon_equals[2]),
+            graph_and_annotations.animate.scale(0.7).shift(1.8 * UP),
+        )
+        self.pause()
+
+        perfect_definition.next_to(graph.get_group(), DOWN, buff=1.1)
+        self.play(FadeIn(perfect_definition))
+        self.pause()
+        self.play(FadeOut(perfect_definition))
+        self.pause()
+        x_tilde = MathTex(r"\tilde{x} := x^* \pm \varepsilon").next_to(
+            graph.get_group(), DOWN, buff=1.1
+        )
+        self.play(FadeIn(x_tilde))
+        self.pause()
+        self.play(FadeOut(x_tilde))
+        self.pause()
+
+        proof = MathTex(
+            r"w(\tilde{x})=&\sum_{e\in E}w_e \tilde{x}_e \\",
+            r"w(\tilde{x})=&w(x^*)+\varepsilon",
+            r"\sum_{i=1}(-1)^iw_{e_i} \\",
+            r"w(\tilde{x})=&w(x^*)+",
+            r"\varepsilon",
+            r"\Delta",
+            r"{\textrm{ }} \implies {\textrm{ }} \Delta = 0",
+        ).next_to(graph.get_group(), DOWN, buff=1.1)
+
+        delta = proof[2].copy()
+        self.play(FadeIn(proof[0]))
+        self.pause()
+        self.play(FadeIn(proof[1]), FadeIn(proof[2]))
+        self.pause()
+        self.play(Circumscribe(proof[2]))
+        self.pause()
+        self.play(FadeIn(proof[3]), FadeIn(proof[4]), Transform(delta, proof[5]))
+        self.pause()
+        self.play(Indicate(delta, scale_factor=1.5))
+        self.pause()
+        self.play(Circumscribe(proof[2]))
+        self.pause()
+        self.play(Indicate(proof[4], scale_factor=1.5))
+        self.pause()
+        self.play(FadeIn(proof[6]))
+        self.pause()
+
+        self.play(FadeOut(proof), FadeOut(delta))
+        self.pause()
+
+        algo = (
+            MathTex(
+                r"&\textrm{while } k(x^*) < ||x^*||:\\",
+                r"&\hspace{20pt}\textrm{find non-integer loop in } x^* \\",
+                r"&\hspace{20pt}\varepsilon \leftarrow \min \{x: x \in \textrm{loop}\} \cup \{1-x: x \in \textrm{loop}\} \\",
+                r"&\hspace{20pt}\tilde{x} \leftarrow x^* \pm \varepsilon",
+                r"\hspace{12pt} k(\tilde{x}) > k(x^*)\\",
+                r"&\hspace{20pt}x^* \leftarrow \tilde{x}",
+            )
+            .set_color_by_tex(r"k(\tilde{x}) > k(x^*)\\", YELLOW)
+            .next_to(graph.get_group(), DOWN, buff=1.1)
+        )
+        self.play(LaggedStart(FadeIn(algo[1]), FadeIn(algo[2]), lag_ratio=0.3))
+        self.pause()
+        self.play(FadeIn(algo[3]))
+        self.pause()
+
+        self.play(
+            Transform(
+                VGroup(x_cd, x_cd_e),
+                MathTex(".7").scale(0.7).move_to(x_cd.copy().shift(0.7 * 0.65 * RIGHT)),
+            ),
+            Transform(VGroup(x_de, x_de_e), MathTex("0").scale(0.7).move_to(x_de)),
+            Transform(VGroup(x_ef, x_ef_e), MathTex("1").scale(0.7).move_to(x_ef)),
+            Transform(VGroup(x_cf, x_cf_e), MathTex("0").scale(0.7).move_to(x_cf)),
+        )
+        self.pause()
+        self.play(FadeIn(algo[4]))
+        self.pause()
+        self.play(
+            FadeOut(cd),
+            FadeOut(fc),
+            FadeOut(de),
+            FadeOut(ef),
+            left_half.animate.set_opacity(1),
+        )
+        self.pause()
+
+        self.play(FadeIn(algo[5]))
+        self.pause()
+        self.play(FadeIn(algo[0]))
+        self.pause()
 
         self.pause()
         self.pause()
